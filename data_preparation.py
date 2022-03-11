@@ -26,6 +26,8 @@ def get_dataset():
     df = pd.DataFrame(columns=['text','label'])
     df['text'] = text
     df['label'] = label
+
+
     # Shuffle the data, since it is sorted by categories
     df = df.sample(frac=1)
 
@@ -42,6 +44,30 @@ def get_dataset():
 
     
     return train_text, train_label, test_text, test_label
+
+def get_dataframe():
+
+    # label for fake or real review
+    # CG -> Computer-generated fake reviews; OR = Original reviews
+    label = pd.read_csv("fake_reviews_dataset.csv", usecols=[2]).values
+
+    # CG -> 1; OR -> 0
+    for [i], j in zip(label, range(len(label))):
+        if i == "CG":
+            label[j] = 1
+        else:
+            label[j] = 0
+    label = np.squeeze(label, axis=1)
+
+    # The review 
+    text = pd.read_csv("fake_reviews_dataset.csv", usecols=[3]).values
+    text = np.squeeze(text, axis=1)
+
+    df = pd.DataFrame(columns=['text','label'])
+    df['text'] = text
+    df['label'] = label
+
+    return df
 
 def tokenizer(train_text_data, test_text_data, oov_token='<UNK>', maxlen=None, padding='post'):
 
