@@ -1,3 +1,4 @@
+# Das erstmal ignorieren (see model_import.py)
 from cgi import test
 import tensorflow as tf
 import tensorflow_hub as hub

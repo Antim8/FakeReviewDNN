@@ -1,3 +1,5 @@
+# Das erstmal ignorieren (see model_import.py)
+
 import tensorflow as tf
 #import tensorflow_text as text
 import tensorflow_hub as hub
