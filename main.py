@@ -1,10 +1,35 @@
-# Das erstmal ignorieren (see model_import.py)
-from pandas import Int64Dtype
 import tensorflow as tf
 import data_preparation
 import numpy as np
 import tensorflow_hub as hub
-train_txt, train_label, test_txt, test_label = data_preparation.get_dataset()
+import model_import
+import pandas
+
+seq_length = 70 
+
+train_text, train_label, test_text, test_label = data_preparation.get_dataset()
+#pre_model = model_import.get_pretrained_model(seq_length=seq_length)
+
+#train_txt, test_txt, maxlen, num_words = data_preparation.tokenizer(train_text, test_text)
+
+import sentencepiece as spm
+
+
+#a = spm.SentencePieceProcessor('tf2_ulmfit/enwiki100-toks-sp35k-cased.vocab')
+#print(a)
+
+#TODO tokensize with the given vokabulary 
+#https://colab.research.google.com/github/google/sentencepiece/blob/master/python/sentencepiece_python_module_example.ipynb#scrollTo=imfPyYlVZmxz
+
+sp = spm.SentencePieceProcessor()
+sp.load('tf2_ulmfit/enwiki100-toks-sp35k-cased.model')
+
+
+train_text_tokens = sp.encode_as_ids(train_text)
+print(train_text_tokens)
+
+
+'''train_txt, train_label, test_txt, test_label = data_preparation.get_dataset()
 
 train_tokens, test_tokens, max_len, num_unique_words = data_preparation.tokenizer(train_txt, test_txt)
 
@@ -44,4 +69,4 @@ model.fit(train_tokens, train_label.astype(np.int64), epochs=20, validation_data
 
 
 predictions = model.predict(train_tokens)
-predictions = [1 if p > 0.5 else 0 for p in predictions]
+predictions = [1 if p > 0.5 else 0 for p in predictions]'''

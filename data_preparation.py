@@ -77,7 +77,7 @@ def tokenizer(train_text_data, test_text_data, oov_token='<UNK>', maxlen=None, p
     num_words = len(get_counts(train_text_data))
 
     tokenizer = tf.keras.preprocessing.text.Tokenizer(num_words, oov_token=oov_token)
-    tokenizer.fit_on_texts(train_text_data)
+    tokenizer.fit_on_sequences(train_text_data)
 
     train_text_seq = tokenizer.texts_to_sequences(train_text_data)
     train_text_seq = tf.keras.preprocessing.sequence.pad_sequences(train_text_seq, maxlen=maxlen, padding=padding)
