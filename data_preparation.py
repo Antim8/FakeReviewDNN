@@ -1,6 +1,8 @@
+from cgi import test
 import numpy as np
 import tensorflow as tf
 import pandas as pd
+from collections import Counter
 
 
 def get_dataset():
@@ -17,44 +19,73 @@ def get_dataset():
             label[j] = 0
     label = np.squeeze(label, axis=1)
 
-    # The review
+    # The review 
     text = pd.read_csv("fake_reviews_dataset.csv", usecols=[3]).values
     text = np.squeeze(text, axis=1)
 
-    df = pd.DataFrame(columns=["text", "label"])
-    df["text"] = text
-    df["label"] = label
+    df = pd.DataFrame(columns=['text','label'])
+    df['text'] = text
+    df['label'] = label
+
+
     # Shuffle the data, since it is sorted by categories
     df = df.sample(frac=1)
 
-    text_data = tokenizer(df["text"])
+    training_set_size = int(df.shape[0]*0.75)
 
-    ds = tf.data.Dataset.from_tensor_slices(
-        (text_data, df["label"].values.astype(np.int32))
-    )
+    train_df = df[:training_set_size]
+    test_df = df[training_set_size:]
 
-    return ds
+    train_text = train_df.text.to_numpy()
+    train_label = train_df.label.to_numpy()
 
+    test_text = test_df.text.to_numpy()
+    test_label = test_df.label.to_numpy()
 
-def tokenizer(
-    text_data, num_words=8000, oov_token="<UNK>", maxlen=None, padding="post"
-):
+    
+    return train_text, train_label, test_text, test_label
+
+def get_dataframe():
+
+    # label for fake or real review
+    # CG -> Computer-generated fake reviews; OR = Original reviews
+    label = pd.read_csv("fake_reviews_dataset.csv", usecols=[2]).values
+
+    # CG -> 1; OR -> 0
+    for [i], j in zip(label, range(len(label))):
+        if i == "CG":
+            label[j] = 1
+        else:
+            label[j] = 0
+    label = np.squeeze(label, axis=1)
+
+    # The review 
+    text = pd.read_csv("fake_reviews_dataset.csv", usecols=[3]).values
+    text = np.squeeze(text, axis=1)
+
+    df = pd.DataFrame(columns=['text','label'])
+    df['text'] = text
+    df['label'] = label
+
+    return df
+
+def tokenizer(train_text_data, test_text_data, oov_token='<UNK>', maxlen=None, padding='post'):
 
     if maxlen == None:
-        maxlen = max(len(x) for x in text_data)
+        maxlen = max(len(x) for x in train_text_data)
 
-    tokenizer = tf.keras.preprocessing.text.Tokenizer(
-        num_words=8000, oov_token=oov_token
-    )
-    tokenizer.fit_on_texts(text_data)
+    num_words = len(get_counts(train_text_data))
 
-    text_seq = tokenizer.texts_to_sequences(text_data)
-    text_seq = tf.keras.preprocessing.sequence.pad_sequences(
-        text_seq, maxlen=maxlen, padding=padding
-    )
+    tokenizer = tf.keras.preprocessing.text.Tokenizer(num_words, oov_token=oov_token)
+    tokenizer.fit_on_texts(train_text_data)
 
-    return text_seq
-
+    train_text_seq = tokenizer.texts_to_sequences(train_text_data)
+    train_text_seq = tf.keras.preprocessing.sequence.pad_sequences(train_text_seq, maxlen=maxlen, padding=padding)
+    
+    test_text_seq = tokenizer.texts_to_sequences(test_text_data)
+    test_text_seq = tf.keras.preprocessing.sequence.pad_sequences(test_text_seq, maxlen=maxlen, padding=padding)
+    
+    return train_text_seq, test_text_seq, maxlen, num_words
 
 def data_pipeline(ds, shuffle=1000, batch=32, prefetch=20):
     ds = ds.shuffle(shuffle)
@@ -63,9 +94,13 @@ def data_pipeline(ds, shuffle=1000, batch=32, prefetch=20):
 
     return ds
 
+def get_counts(text_data):
 
-if __name__ == "__main__":
-    ds = get_dataset()
-    ds = data_pipeline(ds)
-    for i in ds:
-        print(i)
+    count = Counter()
+    for text in text_data:
+        for word in text.split():
+            count[word] += 1
+        return count
+
+
+    
