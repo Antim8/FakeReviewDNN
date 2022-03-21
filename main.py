@@ -49,6 +49,7 @@ history = model.fit(train_data.shuffle(10000).batch(512),
 results = model.evaluate(test_data.batch(512), verbose=2)
 
 for name, value in zip(model.metrics_names, results):
+<<<<<<< HEAD
     print("%s: %.3f" % (name, value))'''
 
 
@@ -168,3 +169,10 @@ for epoch in range(num_epochs):
     test_loss, test_accuracy = test(model, test_dataset, cross_entropy_loss)
     test_losses.append(test_loss)
     test_accuracies.append(test_accuracy)
+=======
+    print("%s: %.3f" % (name, value))
+    
+predictions = model.predict(train_tokens)
+predictions = [1 if p > 0.5 else 0 for p in predictions]
+
+>>>>>>> 94b584a11a0d5844e6dc013d18834ee1f8fc0048
