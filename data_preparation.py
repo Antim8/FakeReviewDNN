@@ -31,10 +31,16 @@ def get_dataset():
     # Shuffle the data, since it is sorted by categories
     df = df.sample(frac=1)
 
-    training_set_size = int(df.shape[0]*0.75)
+    training_set_size = int(df.shape[0]*0.5)
 
     train_df = df[:training_set_size]
     test_df = df[training_set_size:]
+
+    validation_set_size = int(test_df.shape[0]*0.5)
+
+    vali_df = test_df[:validation_set_size]
+    test_df = test_df[validation_set_size:]
+    
 
     train_text = train_df.text.to_numpy()
     train_label = train_df.label.to_numpy()
@@ -42,8 +48,10 @@ def get_dataset():
     test_text = test_df.text.to_numpy()
     test_label = test_df.label.to_numpy()
 
-    
-    return train_text, train_label, test_text, test_label
+    vali_text = vali_df.text.to_numpy()
+    vali_label = vali_df.label.to_numpy()
+
+    return train_text, train_label, test_text, test_label, vali_text, vali_label
 
 def get_dataframe():
 
