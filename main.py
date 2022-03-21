@@ -48,3 +48,7 @@ results = model.evaluate(test_data.batch(512), verbose=2)
 
 for name, value in zip(model.metrics_names, results):
     print("%s: %.3f" % (name, value))
+    
+predictions = model.predict(train_tokens)
+predictions = [1 if p > 0.5 else 0 for p in predictions]
+
