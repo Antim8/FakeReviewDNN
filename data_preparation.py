@@ -95,7 +95,7 @@ def tokenizer(train_text_data, test_text_data, oov_token='<UNK>', maxlen=None, p
     
     return train_text_seq, test_text_seq, maxlen, num_words
 
-def data_pipeline(ds, shuffle=1000, batch=32, prefetch=20):
+def data_pipeline(ds, shuffle=1000, batch=64, prefetch=20):
     ds = ds.shuffle(shuffle)
     ds = ds.batch(batch)
     ds = ds.prefetch(prefetch)

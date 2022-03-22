@@ -5,9 +5,11 @@ class Classification(tf.keras.Model):
     def __init__(self, ulmfit):
         super(Classification, self).__init__()
         self.ulmfit = ulmfit
-        self.flatten = tf.keras.layers.Flatten()
+        self.ulmfit.trainable = False
+        
         self.dense1 = tf.keras.layers.Dense(16, activation='relu')
-        self.dense2 = tf.keras.layers.Dense(1, activation='softmax')
+        self.flatten = tf.keras.layers.Flatten()
+        self.dense2 = tf.keras.layers.Dense(1)
 
     def call(self, inputs):
 
