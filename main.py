@@ -46,7 +46,7 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
               
 history = model.fit(train_data.shuffle(10000).batch(512),
-                    epochs=5,
+                    epochs=50,
                     validation_data=vali_data.batch(512),
                     verbose=1)
 
@@ -108,32 +108,6 @@ for epoch in range(5):
     # print the metrics
     print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
     
-    # logging the validation metrics to the log file which is used by tensorboard
-    with train_summary_writer.as_default():
-        for metric in model.metrics:
-            tf.summary.scalar(f"{metric.name}", metric.result(), step=epoch)
-    
-    # reset all metrics (requires a reset_metrics method in the model)
-    model.reset_metrics()
-    
-    
-    # Validation:
-    
-    for data in val_ds:
-        metrics = model.test_step(data)
-    
-    print([f"val_{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
-    
-    # logging the validation metrics to the log file which is used by tensorboard
-    with val_summary_writer.as_default():
-        for metric in model.metrics:
-            tf.summary.scalar(f"{metric.name}", metric.result(), step=epoch)
-    
-    # reset all metrics
-    model.reset_metrics()
-    
-    print("\n")
-
-
-
+#predictions = model.predict(train_tokens)
+#predictions = [1 if p > 0.5 else 0 for p in predictions]
 
