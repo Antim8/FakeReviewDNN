@@ -1,66 +1,163 @@
-# Das erstmal ignorieren (see model_import.py)
 from cgi import test
 import tensorflow as tf
-import tensorflow_hub as hub
 import tensorflow_datasets as tfds
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-import numpy as np
-import os
-import pandas as pd
+import math
+import model_import as mi
+from tqdm import tqdm
+import datetime
 import data_preparation
 
+class Fake_detection(tf.keras.Model):
+    def __init__(self):
+        super(Fake_detection, self).__init__()
+    
+        self.optimizer = tf.keras.optimizers.Adam()
+        
+        self.metrics_list = [
+                        tf.keras.metrics.Mean(name="loss"),
+                        tf.keras.metrics.BinaryAccuracy(name="acc"),
+                        #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
+                       ]
+        
+        self.loss_function = tf.keras.losses.BinaryCrossentropy(from_logits=True)  
+        
+        lm_num, self.encoder_num, mask_num, self.spm_encoder_model = mi.get_pretrained_model(256)
+                
+        self.encoder_num.trainable = False
+        #L2_lambda = 0.01
+        #dropout_amount = 0.5
+        
+        self.all_layers = [
+            self.encoder_num,
+            tf.keras.layers.Dense(16, activation='relu'),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(1)            
+        ]
+    
+    def encode(self, text):
+        return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
+    
+    def call(self, x, training=False):
 
+        x = self.all_layers[0](x)
 
-df = data_preparation.get_dataframe()
-df['label'] = df['label'].astype(np.int64)
+        for layer in self.all_layers[1:]:
+            try:
+                x = layer(x,training)
+            except:
+                x = layer(x)
+       
+        return x
+    
+    def reset_metrics(self):
+        
+        for metric in self.metrics:
+            metric.reset_states()
+            
+    @tf.function
+    def train_step(self, data):
+        
+        x, targets = data
+        
+        with tf.GradientTape() as tape:
+            predictions = self(x, training=True)
+            
+            loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
+        
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        
+        # update loss metric
+        self.metrics[0].update_state(loss)
+        
+        # for all metrics except loss, update states (accuracy etc.)
+        for metric in self.metrics[1:]:
+            metric.update_state(targets,predictions)
 
-ds = tf.data.Dataset.from_tensor_slices(
-    (tf.cast(df["text"].values, tf.string),
-    tf.cast(df["label"].values, tf.int32))
-)
+        # Return a dictionary mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}
 
-train_size = int(0.7 * len(ds))
+    @tf.function
+    def test_step(self, data):
 
+        x, targets = data
+        
+        predictions = self(x, training=False)
+        
+        loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
+        
+        self.metrics[0].update_state(loss)
+        
+        for metric in self.metrics[1:]:
+            metric.update_state(targets, predictions)
 
-train_data = ds.take(train_size)
-test_data = ds.skip(train_size)
-#validation_data = test_data.skip(val_size)
-#test_data = test_data.take(test_data)
+        return {m.name: m.result() for m in self.metrics}
+    
+    
+if __name__ == "__main__":
+    
+    fmodel = Fake_detection()
+    
+    train_text, train_label, test_text, test_label, _, _ = data_preparation.get_dataset()
+    train_text = fmodel.encode(train_text)
+    test_text = fmodel.encode(test_text)
+    
+    train_label = train_label.astype('int32')
+    test_label = test_label.astype('int32')
+    
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_text, train_label))
+    test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
+    train_dataset = data_preparation.data_pipeline(train_dataset)
+    test_dataset = data_preparation.data_pipeline(test_dataset)
+    
+    # Define where to save the log
+    hyperparameter_string= "First_run"
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-ulmfit = hub.load('https://tfhub.dev/edrone/ulmfit/en/sp35k_cased/1')
+    train_log_path = f"logs/{hyperparameter_string}/{current_time}/train"
+    val_log_path = f"logs/{hyperparameter_string}/{current_time}/val"
 
-embedding = hub.KerasLayer(ulmfit.signatures['string_encoder'], trainable=True)
-#encoder_vectors = encoder(sents)
-#print(encoder_vectors)
+    # log writer for training metrics
+    train_summary_writer = tf.summary.create_file_writer(train_log_path)
 
-
-#embedding = "https://tfhub.dev/google/nnlm-en-dim50/2"
-hub_layer = hub.KerasLayer(embedding, input_shape=[], 
-                           dtype=tf.string, trainable=True)
-                           
-model = Sequential()
-model.add(hub_layer)
-model.add(Dense(16, activation='relu'))
-model.add(Dense(1))
-
-print(model.summary())
-
-model.compile(optimizer='adam',
-              loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
-              metrics=['accuracy'])
-              
-history = model.fit(train_data.shuffle(10000).batch(512),
-                    epochs=50,
-                    validation_data=test_data.batch(512),
-                    verbose=1)
-
-results = model.evaluate(test_data.batch(512), verbose=2)
-
-for name, value in zip(model.metrics_names, results):
-    print("%s: %.3f" % (name, value))
-
-
-
-
-
+    # log writer for validation metrics
+    val_summary_writer = tf.summary.create_file_writer(val_log_path)
+    
+    
+    for epoch in range(5):
+    
+        print(f"Epoch {epoch}:")
+        
+        # Training:
+        
+        for data in tqdm(train_dataset,position=0, leave=True):
+            metrics = fmodel.train_step(data)
+        
+        # print the metrics
+        print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
+        
+        # logging the validation metrics to the log file which is used by tensorboard
+        with train_summary_writer.as_default():
+            for metric in fmodel.metrics:
+                tf.summary.scalar(f"{metric.name}", metric.result(), step=epoch)
+        
+        # reset all metrics (requires a reset_metrics method in the model)
+        fmodel.reset_metrics()
+        
+        
+        # Validation:
+        
+        for data in test_dataset:
+            metrics = fmodel.test_step(data)
+        
+        print([f"val_{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
+        
+        # logging the validation metrics to the log file which is used by tensorboard
+        with val_summary_writer.as_default():
+            for metric in fmodel.metrics:
+                tf.summary.scalar(f"{metric.name}", metric.result(), step=epoch)
+        
+        # reset all metrics
+        fmodel.reset_metrics()
+        
+        print("\n")
