@@ -1,10 +1,10 @@
 import tensorflow as tf
 import data_preparation
 import model_import
-import model
+import model as md
 import numpy as np
 
-
+'''
 train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
 
 lm_num, encoder_num, mask_num, spm_encoder_model= model_import.get_pretrained_model(256)
@@ -50,15 +50,15 @@ results = model.evaluate(test_data.batch(512), verbose=2)
 
 for name, value in zip(model.metrics_names, results):
     print("%s: %.3f" % (name, value))
-
-
-
-
-
 '''
+
+
+
+
+
 ##############################################################################
 ############################ SUBCLASSING API #################################
-
+#tf.config.run_functions_eagerly(True)
 
 train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
 
@@ -87,12 +87,12 @@ vali_dataset = data_preparation.data_pipeline(vali_dataset)
 #     print(i)
 
 
-model = model.Classification(encoder_num)
+model = md.Classification(encoder_num)
 
 optimizer = tf.keras.optimizers.Adam()#learning_rate=1e-3)
 loss_function = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
-loss_metric = tf.keras.metrics.Mean()
+loss_metric = tf.keras.metrics.Accuracy()
 
 
 @tf.function
@@ -105,23 +105,23 @@ def train_step(model, input, target, loss_function, optimizer):
   optimizer.apply_gradients(zip(gradients, model.trainable_variables))
   return loss
 
-#@tf.function
+@tf.function
 def test(model, test_data, loss_function):
   # test over complete test data
 
   test_accuracy_aggregator = []
   test_loss_aggregator = []
 
-  for (input, target) in test_data:
+  for (i, target) in test_data:
 
-    prediction = model(input)
+    prediction = model(i)
    
     sample_test_loss = loss_function(target, prediction)
-    test_loss_aggregator.append(sample_test_loss.numpy())
+    test_loss_aggregator.append(sample_test_loss)#.numpy())
    
-    for t,p in zip(target, prediction):
-      sample_test_accuracy = np.round(t) == np.round(p)
-      test_accuracy_aggregator.append(tf.cast(sample_test_accuracy, tf.float32))
+    #for t,p in zip(target, prediction):
+    #  sample_test_accuracy = np.round(t) == np.round(p)
+    #  test_accuracy_aggregator.append(tf.cast(sample_test_accuracy, tf.float32))
 
   test_loss = tf.reduce_mean(test_loss_aggregator)
   test_accuracy = tf.reduce_mean(test_accuracy_aggregator)
@@ -130,7 +130,7 @@ def test(model, test_data, loss_function):
 
 ### Hyperparameters
 num_epochs = 10
-learning_rate = 0.001
+#learning_rate = 0.001
 
 
 # Initialize the loss: categorical cross entropy. Check out 'tf.keras.losses'.
@@ -153,7 +153,7 @@ test_accuracies.append(test_accuracy)
 train_loss, _ = test(model, train_dataset, loss_function)
 train_losses.append(train_loss)
 
-model.summary()
+#model.summary()
 
 # We train for num_epochs epochs.
 for epoch in range(num_epochs):
@@ -161,8 +161,8 @@ for epoch in range(num_epochs):
 
     #training (and checking in with training)
     epoch_loss_agg = []
-    for input,target in train_dataset:
-        train_loss = train_step(model, input, target, loss_function, optimizer)
+    for i,target in train_dataset:
+        train_loss = train_step(model, i, target, loss_function, optimizer)
         epoch_loss_agg.append(train_loss)
     
     #track training loss
@@ -173,4 +173,3 @@ for epoch in range(num_epochs):
     test_losses.append(test_loss)
     test_accuracies.append(test_accuracy)
 
-'''
