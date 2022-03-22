@@ -5,7 +5,7 @@ import model
 import numpy as np
 
 
-'''train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
+train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
 
 lm_num, encoder_num, mask_num, spm_encoder_model= model_import.get_pretrained_model(256)
 
@@ -49,14 +49,13 @@ history = model.fit(train_data.shuffle(10000).batch(512),
 results = model.evaluate(test_data.batch(512), verbose=2)
 
 for name, value in zip(model.metrics_names, results):
-<<<<<<< HEAD
-    print("%s: %.3f" % (name, value))'''
+    print("%s: %.3f" % (name, value))
 
 
 
 
 
-
+'''
 ##############################################################################
 ############################ SUBCLASSING API #################################
 
@@ -84,13 +83,13 @@ vali_dataset = data_preparation.data_pipeline(vali_dataset)
 
 
 
-for i in train_dataset.take(3):
-     print(i)
+#for i in train_dataset.take(3):
+#     print(i)
 
 
 model = model.Classification(encoder_num)
 
-optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+optimizer = tf.keras.optimizers.Adam()#learning_rate=1e-3)
 loss_function = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
 loss_metric = tf.keras.metrics.Mean()
@@ -135,9 +134,9 @@ learning_rate = 0.001
 
 
 # Initialize the loss: categorical cross entropy. Check out 'tf.keras.losses'.
-cross_entropy_loss = tf.keras.losses.BinaryCrossentropy()
+#loss_function = tf.keras.losses.BinaryCrossentropy()
 # Initialize the optimizer: SGD with default parameters. Check out 'tf.keras.optimizers'
-optimizer = tf.keras.optimizers.SGD(learning_rate)
+#optimizer = tf.keras.optimizers.SGD(learning_rate)
 
 # Initialize lists for later visualization.
 train_losses = []
@@ -146,12 +145,12 @@ test_losses = []
 test_accuracies = []
 
 #testing once before we begin
-test_loss, test_accuracy = test(model, test_dataset, cross_entropy_loss)
+test_loss, test_accuracy = test(model, test_dataset, loss_function)
 test_losses.append(test_loss)
 test_accuracies.append(test_accuracy)
 
 #check how model performs on train data once before we begin
-train_loss, _ = test(model, train_dataset, cross_entropy_loss)
+train_loss, _ = test(model, train_dataset, loss_function)
 train_losses.append(train_loss)
 
 model.summary()
@@ -162,15 +161,16 @@ for epoch in range(num_epochs):
 
     #training (and checking in with training)
     epoch_loss_agg = []
-    for input,target in vali_dataset:
-        train_loss = train_step(model, input, target, cross_entropy_loss, optimizer)
+    for input,target in train_dataset:
+        train_loss = train_step(model, input, target, loss_function, optimizer)
         epoch_loss_agg.append(train_loss)
     
     #track training loss
     train_losses.append(tf.reduce_mean(epoch_loss_agg))
 
     #testing, so we can track accuracy and test loss
-    test_loss, test_accuracy = test(model, vali_dataset, cross_entropy_loss)
+    test_loss, test_accuracy = test(model, vali_dataset, loss_function)
     test_losses.append(test_loss)
     test_accuracies.append(test_accuracy)
 
+'''
