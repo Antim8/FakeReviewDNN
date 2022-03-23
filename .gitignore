@@ -131,3 +131,4 @@ dmypy.json
 # Logs
 ./logs/*
 *events.out*
+./tf2_ulmfit/**

@@ -15,7 +15,7 @@ class STLR(tf.keras.optimizers.schedules.LearningRateSchedule):
 
         self.cut = math.floor(self.trainings_iterations * self.cut_frac)
 
-        self.lr = 0/self.cut
+        self.lr = 0
 
     def __call__(self, step):
 

@@ -19,10 +19,10 @@ class Fake_detection(tf.keras.Model):
         self.num_epoch = 3
         self.num_updates_per_epoch = 316
 
-        self.lr = slanted_triangular_lr.STLR(self.num_epoch, self.num_updates_per_epoch)
+        #self.lr = slanted_triangular_lr.STLR(self.num_epoch, self.num_updates_per_epoch)
 
         
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
+        #self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
         
         self.metrics_list = [
                         tf.keras.metrics.Mean(name="loss"),
@@ -36,8 +36,8 @@ class Fake_detection(tf.keras.Model):
 
         pretrained_layers = mi.get_list_of_layers(self.encoder_num)
 
-        for layer in pretrained_layers:
-            layer.trainable = False
+        #for layer in pretrained_layers:
+        #    layer.trainable = False
             
         additional_layers = [
             tf.keras.layers.Dense(16, activation='relu'),
@@ -47,7 +47,6 @@ class Fake_detection(tf.keras.Model):
         for layer in additional_layers:
             pretrained_layers.append(layer)
         
-        print(pretrained_layers)
 
         #self.encoder_num.trainable = False
         #L2_lambda = 0.01
@@ -56,11 +55,11 @@ class Fake_detection(tf.keras.Model):
         self.all_layers = pretrained_layers
 
         # DFF
-        #optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=self.num_epoch, num_updates_per_epoch=self.num_updates_per_epoch)
+        optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=self.num_epoch, num_updates_per_epoch=self.num_updates_per_epoch)
 
         #print(optimizers_and_layers)
 
-        #self.optimizer = tfa.optimizers.MultiOptimizer(optimizers_and_layers)
+        self.optimizer = tfa.optimizers.MultiOptimizer(optimizers_and_layers)
         print(self.optimizer)
 
         
@@ -70,9 +69,12 @@ class Fake_detection(tf.keras.Model):
     
     def call(self, x, training=False):
 
-        x = self.all_layers[0](x)
+        #x = self.all_layers[0](x)
+        for layer in self.all_layers[:10]:
+            x = layer(x)
 
-        for layer in self.all_layers[1:]:
+
+        for layer in self.all_layers[10:]:
             try:
                 x = layer(x,training)
             except:
@@ -164,7 +166,8 @@ if __name__ == "__main__":
         
         for data in tqdm(train_dataset,position=0, leave=True):
             metrics = fmodel.train_step(data)
-            #print(fmodel.optimizer.get_config())
+            print(fmodel.optimizer.get_config())
+            
             
   
         # print the metrics

@@ -6,9 +6,14 @@ import numpy as np
 from tqdm import tqdm
 import math
 import datetime
+from discriminative_fine_tuning import get_optimizers
+import tensorflow_addons as tfa
 
 
-'''
+
+
+
+
 train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
 
 lm_num, encoder_num, mask_num, spm_encoder_model= model_import.get_pretrained_model(256)
@@ -17,16 +22,22 @@ train_text = spm_encoder_model(tf.constant(train_text, dtype=tf.string))
 test_text = spm_encoder_model(tf.constant(test_text, dtype=tf.string))
 vali_text = spm_encoder_model(tf.constant(vali_text, dtype=tf.string))
 
+pre = model_import.get_list_of_layers(encoder_num)
+
+pre.append(tf.keras.layers.Dense(16, activation='relu'))
+pre.append(tf.keras.layers.Flatten())
+pre.append(tf.keras.layers.Dense(1))
 
 
-model = tf.keras.Sequential([
-     encoder_num,
-     tf.keras.layers.Dense(16, activation='relu'),
-     tf.keras.layers.Flatten(), # check 
-     tf.keras.layers.Dense(1)
-])
+model = tf.keras.Sequential(pre)
 
-encoder_num.trainable = False
+#encoder_num.trainable = False
+
+optimizers_and_layers = get_optimizers(layers=pre, num_epochs=5, num_updates_per_epoch=316)
+
+#print(optimizers_and_layers)
+
+optimizer = tfa.optimizers.MultiOptimizer(optimizers_and_layers)
 
 
 
@@ -41,12 +52,12 @@ vali_data = tf.data.Dataset.from_tensor_slices((vali_text, vali_label))
 
 model.summary()
 
-model.compile(optimizer='adam',
+model.compile(optimizer=optimizer,
               loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
               metrics=['accuracy'])
               
 history = model.fit(train_data.shuffle(10000).batch(512),
-                    epochs=50,
+                    epochs=5,
                     validation_data=vali_data.batch(512),
                     verbose=1)
 
@@ -54,9 +65,9 @@ results = model.evaluate(test_data.batch(512), verbose=2)
 
 for name, value in zip(model.metrics_names, results):
 
-    print("%s: %.3f" % (name, value))'''
+    print("%s: %.3f" % (name, value))
 
-train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
+'''train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
 
 
 
@@ -110,4 +121,5 @@ for epoch in range(5):
     
 #predictions = model.predict(train_tokens)
 #predictions = [1 if p > 0.5 else 0 for p in predictions]
+'''
 
