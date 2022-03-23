@@ -8,16 +8,20 @@ import datetime
 import data_preparation
 import slanted_triangular_lr
 import tensorflow_addons as tfa
+from discriminative_fine_tuning import get_optimizers
+from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
+
 
 class Fake_detection(tf.keras.Model):
     def __init__(self):
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 1
+        self.num_epoch = 3
         self.num_updates_per_epoch = 316
 
         self.lr = slanted_triangular_lr.STLR(self.num_epoch, self.num_updates_per_epoch)
-    
+
+        
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
         
         self.metrics_list = [
@@ -42,12 +46,24 @@ class Fake_detection(tf.keras.Model):
         
         for layer in additional_layers:
             pretrained_layers.append(layer)
+        
+        print(pretrained_layers)
 
         #self.encoder_num.trainable = False
         #L2_lambda = 0.01
         #dropout_amount = 0.5
         
         self.all_layers = pretrained_layers
+
+        # DFF
+        #optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=self.num_epoch, num_updates_per_epoch=self.num_updates_per_epoch)
+
+        #print(optimizers_and_layers)
+
+        #self.optimizer = tfa.optimizers.MultiOptimizer(optimizers_and_layers)
+        print(self.optimizer)
+
+        
     
     def encode(self, text):
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
@@ -73,6 +89,7 @@ class Fake_detection(tf.keras.Model):
     def train_step(self, data):
         
         x, targets = data
+        apply_awd_eagerly(fmodel, 0.5) # wird applied? #slanted triangular lr auch in der library lieber beides selber oder von library nutzen
         
         with tf.GradientTape() as tape:
             predictions = self(x, training=True)
@@ -125,7 +142,7 @@ if __name__ == "__main__":
     test_dataset = data_preparation.data_pipeline(test_dataset)
     
     # Define where to save the log
-    hyperparameter_string= "First_run"
+    hyperparameter_string = "First_run"
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     train_log_path = f"logs/{hyperparameter_string}/{current_time}/train"
@@ -139,7 +156,7 @@ if __name__ == "__main__":
     
     
 
-    for epoch in range(1):
+    for epoch in range(3):
     
         print(f"Epoch {epoch}:")
         
@@ -147,6 +164,7 @@ if __name__ == "__main__":
         
         for data in tqdm(train_dataset,position=0, leave=True):
             metrics = fmodel.train_step(data)
+            #print(fmodel.optimizer.get_config())
             
   
         # print the metrics
@@ -179,5 +197,8 @@ if __name__ == "__main__":
         print("\n")
 
     print(fmodel.summary())
+    print(len(fmodel.layers))
+
+    
 
     

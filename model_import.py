@@ -21,11 +21,11 @@ def get_pretrained_model(seq_length):
 
     return lm_num, encoder_num, mask_num, spm_encoder_model
 
-def get_list_of_layers(model, num_layers=10):
+def get_list_of_layers(model):
 
-    layers = []
-    for i in range(num_layers):
+    l = []
+    for layer in model.layers:
         
-        layers.append(model.get_layer(index=i))
-
-    return layers
+        l.append(layer)
+       
+    return l
