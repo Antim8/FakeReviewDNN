@@ -127,8 +127,6 @@ if __name__ == "__main__":
 
     # log writer for validation metrics
     val_summary_writer = tf.summary.create_file_writer(val_log_path)
-
-    learning_rates = []
     
     
     for epoch in range(5):
@@ -139,9 +137,7 @@ if __name__ == "__main__":
         
         for data in tqdm(train_dataset,position=0, leave=True):
             metrics = fmodel.train_step(data)
-
-            learning_rates.append(fmodel.optimizer.lr.get_lr())
-        
+  
         # print the metrics
         print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
         
@@ -171,10 +167,4 @@ if __name__ == "__main__":
         
         print("\n")
 
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    x = np.arange(5*316)
-    y = learning_rates
-    plt.plot(x,y)
-    plt.show()
+    
