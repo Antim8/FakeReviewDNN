@@ -6,12 +6,18 @@ import model_import as mi
 from tqdm import tqdm
 import datetime
 import data_preparation
+import slanted_triangular_lr
 
 class Fake_detection(tf.keras.Model):
     def __init__(self):
         super(Fake_detection, self).__init__()
+
+        self.num_epoch = 5
+        self.num_updates_per_epoch = 316
+
+        self.lr = slanted_triangular_lr.STLR(self.num_epoch, self.num_updates_per_epoch)
     
-        self.optimizer = tf.keras.optimizers.Adam()
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
         
         self.metrics_list = [
                         tf.keras.metrics.Mean(name="loss"),
@@ -61,7 +67,6 @@ class Fake_detection(tf.keras.Model):
         
         with tf.GradientTape() as tape:
             predictions = self(x, training=True)
-            
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
         
         gradients = tape.gradient(loss, self.trainable_variables)
@@ -122,6 +127,8 @@ if __name__ == "__main__":
 
     # log writer for validation metrics
     val_summary_writer = tf.summary.create_file_writer(val_log_path)
+
+    learning_rates = []
     
     
     for epoch in range(5):
@@ -132,6 +139,8 @@ if __name__ == "__main__":
         
         for data in tqdm(train_dataset,position=0, leave=True):
             metrics = fmodel.train_step(data)
+
+            learning_rates.append(fmodel.optimizer.lr.get_lr())
         
         # print the metrics
         print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
@@ -161,3 +170,11 @@ if __name__ == "__main__":
         fmodel.reset_metrics()
         
         print("\n")
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    x = np.arange(5*316)
+    y = learning_rates
+    plt.plot(x,y)
+    plt.show()

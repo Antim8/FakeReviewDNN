@@ -8,8 +8,8 @@
 - Subclassing API anwenden
 - Model erweiteren, sodass es ueberein mit dem paper ist
     -  unfrezing init mit trainable 
-    -  training loop und so
     -  triangle lr anwenden 
+    -  awd dropout 
 
 ## Additional but important 
 
