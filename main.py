@@ -3,6 +3,9 @@ import data_preparation
 import model_import
 import model as md
 import numpy as np
+from tqdm import tqdm
+import math
+import datetime
 
 '''
 train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
@@ -42,25 +45,25 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
               
 history = model.fit(train_data.shuffle(10000).batch(512),
-                    epochs=5,
+                    epochs=50,
                     validation_data=vali_data.batch(512),
                     verbose=1)
 
 results = model.evaluate(test_data.batch(512), verbose=2)
 
 for name, value in zip(model.metrics_names, results):
-    print("%s: %.3f" % (name, value))
-'''
 
-
-
-
-
-##############################################################################
-############################ SUBCLASSING API #################################
-#tf.config.run_functions_eagerly(True)
+    print("%s: %.3f" % (name, value))'''
 
 train_text, train_label, test_text, test_label, vali_text, vali_label = data_preparation.get_dataset()
+
+
+
+lm_num, encoder_num, mask_num, spm_encoder_model= model_import.get_pretrained_model(256)
+
+train_text = spm_encoder_model(tf.constant(train_text, dtype=tf.string))
+test_text = spm_encoder_model(tf.constant(test_text, dtype=tf.string))
+vali_text = spm_encoder_model(tf.constant(vali_text, dtype=tf.string))
 
 lm_num, encoder_num, mask_num, spm_encoder_model= model_import.get_pretrained_model(256)
 
@@ -72,104 +75,38 @@ train_label = train_label.astype('int32')
 test_label = test_label.astype('int32')
 vali_label = vali_label.astype('int32')
 
-train_dataset = tf.data.Dataset.from_tensor_slices((train_text, train_label))
-test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
-vali_dataset = tf.data.Dataset.from_tensor_slices((vali_text, vali_label))
 
-train_dataset = data_preparation.data_pipeline(train_dataset)
-test_dataset = data_preparation.data_pipeline(test_dataset)
-vali_dataset = data_preparation.data_pipeline(vali_dataset)
+train_ds = tf.data.Dataset.from_tensor_slices((train_text, train_label))
+test_ds = tf.data.Dataset.from_tensor_slices((test_text, test_label))
+val_ds = tf.data.Dataset.from_tensor_slices((vali_text, vali_label))
 
 
 
+# Define where to save the log
+hyperparameter_string= "Your_Settings_Here"
+current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-#for i in train_dataset.take(3):
-#     print(i)
+train_log_path = f"logs/{hyperparameter_string}/{current_time}/train"
+val_log_path = f"logs/{hyperparameter_string}/{current_time}/val"
 
+# log writer for training metrics
+train_summary_writer = tf.summary.create_file_writer(train_log_path)
 
-model = md.Classification(encoder_num)
+# log writer for validation metrics
+val_summary_writer = tf.summary.create_file_writer(val_log_path)
 
-optimizer = tf.keras.optimizers.Adam()#learning_rate=1e-3)
-loss_function = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-
-loss_metric = tf.keras.metrics.Accuracy()
-
-
-@tf.function
-def train_step(model, input, target, loss_function, optimizer):
-  # loss_object and optimizer_object are instances of respective tensorflow classes
-  with tf.GradientTape() as tape:
-    prediction = model(input)
-    loss = loss_function(target, prediction)
-  gradients = tape.gradient(loss, model.trainable_variables)
-  optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-  return loss
-
-@tf.function
-def test(model, test_data, loss_function):
-  # test over complete test data
-
-  test_accuracy_aggregator = []
-  test_loss_aggregator = []
-
-  for (i, target) in test_data:
-
-    prediction = model(i)
-   
-    sample_test_loss = loss_function(target, prediction)
-    test_loss_aggregator.append(sample_test_loss)#.numpy())
-   
-    #for t,p in zip(target, prediction):
-    #  sample_test_accuracy = np.round(t) == np.round(p)
-    #  test_accuracy_aggregator.append(tf.cast(sample_test_accuracy, tf.float32))
-
-  test_loss = tf.reduce_mean(test_loss_aggregator)
-  test_accuracy = tf.reduce_mean(test_accuracy_aggregator)
-
-  return test_loss, test_accuracy
-
-### Hyperparameters
-num_epochs = 10
-#learning_rate = 0.001
-
-
-# Initialize the loss: categorical cross entropy. Check out 'tf.keras.losses'.
-#loss_function = tf.keras.losses.BinaryCrossentropy()
-# Initialize the optimizer: SGD with default parameters. Check out 'tf.keras.optimizers'
-#optimizer = tf.keras.optimizers.SGD(learning_rate)
-
-# Initialize lists for later visualization.
-train_losses = []
-
-test_losses = []
-test_accuracies = []
-
-#testing once before we begin
-test_loss, test_accuracy = test(model, test_dataset, loss_function)
-test_losses.append(test_loss)
-test_accuracies.append(test_accuracy)
-
-#check how model performs on train data once before we begin
-train_loss, _ = test(model, train_dataset, loss_function)
-train_losses.append(train_loss)
-
-#model.summary()
-
-# We train for num_epochs epochs.
-for epoch in range(num_epochs):
-    print(f'Epoch: {str(epoch)} starting with accuracy {test_accuracies[-1]}')
-
-    #training (and checking in with training)
-    epoch_loss_agg = []
-    for i,target in train_dataset:
-        train_loss = train_step(model, i, target, loss_function, optimizer)
-        epoch_loss_agg.append(train_loss)
+for epoch in range(5):
     
-    #track training loss
-    train_losses.append(tf.reduce_mean(epoch_loss_agg))
-
-    #testing, so we can track accuracy and test loss
-    test_loss, test_accuracy = test(model, vali_dataset, loss_function)
-    test_losses.append(test_loss)
-    test_accuracies.append(test_accuracy)
+    print(f"Epoch {epoch}:")
+    
+    # Training:
+    
+    for data in tqdm.notebook.tqdm(train_ds,position=0, leave=True):
+        metrics = model.train_step(data)
+    
+    # print the metrics
+    print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
+    
+#predictions = model.predict(train_tokens)
+#predictions = [1 if p > 0.5 else 0 for p in predictions]
 
