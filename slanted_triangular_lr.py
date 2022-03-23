@@ -21,18 +21,9 @@ class STLR(tf.keras.optimizers.schedules.LearningRateSchedule):
         help1 = tf.cast(help1, tf.float32)
         help2 = 1. - help1
 
-
         p = help1 * (step/self.cut) + help2 * (1-((step-self.cut)/(self.cut*((1/self.cut_frac)-1))))
 
-
-
-        print(p)
-     
-
         self.lr = self.lr_max * ((1+p*(self.ratio-1))/self.ratio)
-
-        print(self.lr)
-
 
         return self.lr
     

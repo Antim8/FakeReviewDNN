@@ -7,12 +7,13 @@ from tqdm import tqdm
 import datetime
 import data_preparation
 import slanted_triangular_lr
+import tensorflow_addons as tfa
 
 class Fake_detection(tf.keras.Model):
     def __init__(self):
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 5
+        self.num_epoch = 1
         self.num_updates_per_epoch = 316
 
         self.lr = slanted_triangular_lr.STLR(self.num_epoch, self.num_updates_per_epoch)
@@ -28,17 +29,25 @@ class Fake_detection(tf.keras.Model):
         self.loss_function = tf.keras.losses.BinaryCrossentropy(from_logits=True)  
         
         lm_num, self.encoder_num, mask_num, self.spm_encoder_model = mi.get_pretrained_model(256)
-                
-        self.encoder_num.trainable = False
+
+        pretrained_layers = mi.get_list_of_layers(self.encoder_num)
+
+        for layer in pretrained_layers:
+            layer.trainable = False
+            
+        additional_layers = [
+            tf.keras.layers.Dense(16, activation='relu'),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(1)  ]
+        
+        for layer in additional_layers:
+            pretrained_layers.append(layer)
+
+        #self.encoder_num.trainable = False
         #L2_lambda = 0.01
         #dropout_amount = 0.5
         
-        self.all_layers = [
-            self.encoder_num,
-            tf.keras.layers.Dense(16, activation='relu'),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(1)            
-        ]
+        self.all_layers = pretrained_layers
     
     def encode(self, text):
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
@@ -129,7 +138,8 @@ if __name__ == "__main__":
     val_summary_writer = tf.summary.create_file_writer(val_log_path)
     
     
-    for epoch in range(5):
+
+    for epoch in range(1):
     
         print(f"Epoch {epoch}:")
         
@@ -137,6 +147,7 @@ if __name__ == "__main__":
         
         for data in tqdm(train_dataset,position=0, leave=True):
             metrics = fmodel.train_step(data)
+            
   
         # print the metrics
         print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
@@ -166,5 +177,7 @@ if __name__ == "__main__":
         fmodel.reset_metrics()
         
         print("\n")
+
+    print(fmodel.summary())
 
     
