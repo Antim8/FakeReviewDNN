@@ -1,14 +1,13 @@
 import tensorflow as tf
 import data_preparation
 import model_import
-import model
+import model as md
 import numpy as np
 from tqdm import tqdm
 import math
 import datetime
 from discriminative_fine_tuning import get_optimizers
 import tensorflow_addons as tfa
-
 
 
 
