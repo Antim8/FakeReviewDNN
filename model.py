@@ -16,7 +16,7 @@ class Fake_detection(tf.keras.Model):
     def __init__(self):
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 5
+        self.num_epoch = 1
         self.num_updates_per_epoch = 316
 
         #self.lr = slanted_triangular_lr.STLR(self.num_epoch, self.num_updates_per_epoch)
@@ -36,17 +36,31 @@ class Fake_detection(tf.keras.Model):
 
         pretrained_layers = mi.get_list_of_layers(self.encoder_num)
 
-        #for layer in pretrained_layers:
-        #    layer.trainable = False
+        for layer in pretrained_layers:
+            layer.trainable = False
             
-        additional_layers = [
+        '''additional_layers = [
             tf.keras.layers.Dense(16, activation='relu'),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(1)  ]
+            tf.keras.layers.Dense(1)  ]'''
+        
+        additional_layers = []
+
+        add_model = tf.keras.Sequential(
+            [
+                tf.keras.layers.Dense(16, activation='relu', input_shape=(256, 400)),
+                tf.keras.layers.Flatten(),
+                tf.keras.layers.Dense(1)
+
+            ]
+        )
+
+        for layer in add_model.layers:
+            additional_layers.append(layer)
+
         
         for layer in additional_layers:
             pretrained_layers.append(layer)
-        
 
         #self.encoder_num.trainable = False
         #L2_lambda = 0.01
@@ -58,15 +72,11 @@ class Fake_detection(tf.keras.Model):
             
 
         # DFF
-        optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=self.num_epoch, num_updates_per_epoch=self.num_updates_per_epoch)
+        self.optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=self.num_epoch, num_updates_per_epoch=self.num_updates_per_epoch)
 
-        #print(optimizers_and_layers)
+        self.optimizer = tfa.optimizers.MultiOptimizer(self.optimizers_and_layers)
+        #self.optimizer = tf.keras.optimizers.Adam()
 
-        self.optimizer = tfa.optimizers.MultiOptimizer(optimizers_and_layers)
-        self.optimizer = tf.keras.optimizers.Adam()
-
-        
-    
     def encode(self, text):
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
     
@@ -171,7 +181,8 @@ if __name__ == "__main__":
         
         for data in tqdm(train_dataset,position=0, leave=True):
             metrics = fmodel.train_step(data)
-            print(fmodel.optimizer.get_config())
+            #print(fmodel.optimizer.get_config())
+            #print(fmodel.optimizers_and_layers)
             
             
   
