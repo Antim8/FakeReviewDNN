@@ -26,41 +26,40 @@ class Fake_detection(tf.keras.Model):
         
         self.metrics_list = [
                         tf.keras.metrics.Mean(name="loss"),
-                        tf.keras.metrics.BinaryAccuracy(name="acc"),
+                        tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
                         #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
                        ]
         
-        self.loss_function = tf.keras.losses.BinaryCrossentropy(from_logits=True)  
+        self.loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)  
         
-        lm_num, self.encoder_num, mask_num, self.spm_encoder_model = mi.get_pretrained_model(256)
+        self.lm_num, self.encoder_num, mask_num, self.spm_encoder_model = mi.get_pretrained_model(256)
 
-        pretrained_layers = mi.get_list_of_layers(self.encoder_num)
+        pretrained_layers = mi.get_list_of_layers(self.lm_num)
 
         for layer in pretrained_layers:
-            layer.trainable = False
+            layer.trainable = True
             
-        '''additional_layers = [
-            tf.keras.layers.Dense(16, activation='relu'),
+        '''additional_layers = tf.keras.Sequential([
+            tf.keras.layers.Dense(16, activation='relu', input_shape=(256, 400)),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(1)  ]'''
+            tf.keras.layers.Dense(1)  ])'''
         
-        additional_layers = []
+        #additional_layers = []
 
-        add_model = tf.keras.Sequential(
+        '''additional_layers = tf.keras.Sequential(
             [
-                tf.keras.layers.Dense(16, activation='relu', input_shape=(256, 400)),
-                tf.keras.layers.Flatten(),
-                tf.keras.layers.Dense(1)
-
+                #tf.keras.layers.Dense(16, activation='relu', input_shape=(256, 400)),
+                #tf.keras.layers.Flatten(),
+                tf.keras.layers.Dense(2, activation='softmax', input_shape=(256, 400)),
             ]
-        )
+        )'''
 
-        for layer in add_model.layers:
-            additional_layers.append(layer)
+        '''for layer in add_model.layers:
+            additional_layers.append(layer)'''
 
         
-        for layer in additional_layers:
-            pretrained_layers.append(layer)
+        '''for layer in additional_layers.layers:
+            pretrained_layers.append(layer)'''
 
         #self.encoder_num.trainable = False
         #L2_lambda = 0.01
