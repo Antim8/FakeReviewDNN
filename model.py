@@ -1,4 +1,3 @@
-from cgi import test
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import math
@@ -11,89 +10,147 @@ import tensorflow_addons as tfa
 from discriminative_fine_tuning import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 
+from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
+
 
 class Fake_detection(tf.keras.Model):
-    def __init__(self):
+    def __init__(self, classifier=False):
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 1
+        self.num_epoch = 20
         self.num_updates_per_epoch = 316
 
-        #self.lr = slanted_triangular_lr.STLR(self.num_epoch, self.num_updates_per_epoch)
+        self.classifier = classifier
+
+        self.lm_num, self.encoder_num, _, self.spm_encoder_model = mi.get_pretrained_model(256)
 
         
-        #self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
-        
-        self.metrics_list = [
+
+        if classifier:
+            self.metrics_list = [
                         tf.keras.metrics.Mean(name="loss"),
-                        tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
+                        tf.keras.metrics.BinaryAccuracy(name="acc"),
                         #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
                        ]
-        
-        self.loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)  
-        
-        self.lm_num, self.encoder_num, mask_num, self.spm_encoder_model = mi.get_pretrained_model(256)
+            self.loss_function = tf.keras.losses.BinaryCrossentropy()  
+            pretrained_layers = mi.get_list_of_layers(self.encoder_num)
 
-        pretrained_layers = mi.get_list_of_layers(self.lm_num)
+            pretrained_layers.append(ConcatPooler())
+            pretrained_layers.append(tf.keras.layers.BatchNormalization(epsilon=1e-05, momentum=0.1, scale=False, center=False))
+            pretrained_layers.append(tf.keras.layers.Dropout(0.1))
+
+            additional_layers = tf.keras.Sequential([
+                tf.keras.layers.Dense(50, activation='linear', use_bias=False, input_shape=(1200,)),
+                tf.keras.layers.ReLU(),
+                tf.keras.layers.BatchNormalization(epsilon=1e-05, momentum=0.1, scale=False, center=False),
+                tf.keras.layers.Dropout(0.1),
+                tf.keras.layers.Dense(1, use_bias=False, activation='sigmoid')
+            ])
+
+            for layer in additional_layers.layers:
+                pretrained_layers.append(layer)
+
+            num_epochs_list = []
+
+            for num in range(len(pretrained_layers)):
+                epoch = self.num_epoch - num
+                num_epochs_list.append(epoch)
+
+        else:
+            self.metrics_list = [
+                            tf.keras.metrics.Mean(name="loss"),
+                            tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
+                            #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
+                        ]
+            self.loss_function = tf.keras.losses.SparseCategoricalCrossentropy()  
+            pretrained_layers = mi.get_list_of_layers(self.lm_num)
+            num_epochs_list = self.num_epoch
 
         for layer in pretrained_layers:
             layer.trainable = True
-            
-        '''additional_layers = tf.keras.Sequential([
-            tf.keras.layers.Dense(16, activation='relu', input_shape=(256, 400)),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(1)  ])'''
-        
-        #additional_layers = []
 
-        '''additional_layers = tf.keras.Sequential(
-            [
-                #tf.keras.layers.Dense(16, activation='relu', input_shape=(256, 400)),
-                #tf.keras.layers.Flatten(),
-                tf.keras.layers.Dense(2, activation='softmax', input_shape=(256, 400)),
-            ]
-        )'''
+        self.training_list = []
+        for _ in range(len(pretrained_layers)):
+            self.training_list.append(False)
+        self.no_training = self.training_list
+        self.training_list_index = len(pretrained_layers) - 1
 
-        '''for layer in add_model.layers:
-            additional_layers.append(layer)'''
-
-        
-        '''for layer in additional_layers.layers:
-            pretrained_layers.append(layer)'''
-
-        #self.encoder_num.trainable = False
-        #L2_lambda = 0.01
-        #dropout_amount = 0.5
-        
         self.all_layers = pretrained_layers
         #for layer in self.all_layers:
         #    layer.trainable = True
-            
 
         # DFF
-        self.optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=self.num_epoch, num_updates_per_epoch=self.num_updates_per_epoch)
+        self.optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=num_epochs_list, num_updates_per_epoch=self.num_updates_per_epoch)
 
         self.optimizer = tfa.optimizers.MultiOptimizer(self.optimizers_and_layers)
         #self.optimizer = tf.keras.optimizers.Adam()
 
+        print(self.no_training, "<---------")
+
     def encode(self, text):
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
-    
-    def call(self, x, training=False):
 
-        #x = self.all_layers[0](x)
+    def gradual_unfreezing(self):
+
+        #TODO more layers than epochs error
+
+        self.training_list[self.training_list_index] = True
+
+        temp = self.training_list_index > 0
+
+        self.training_list_index = (self.training_list_index - 1) * temp
+
+    def temp_call_classifier(self, x, training=False):
+    
+        training = self.training_list * training + self.no_training * (int(training)+1)
+        print(training)
+        
+
+        for i, layer in enumerate(self.all_layers[:10]):
+            try:
+                layer.trainable = training[i]
+                x = layer(x)
+            except:
+                x = layer(x)
+               
+        #print(self.encoder_num.output)
+        x = self.all_layers[10](x)
+
+
+        for i, layer in enumerate(self.all_layers[11:]):
+            i += 11
+            try:
+                layer.trainable = training[i]
+                x = layer(x)
+                #print(training[i],i)
+            except:
+                x = layer(x)
+                #print('no')
+
+        return x
+    
+    def temp_call(self, x, training=False):
+         
         for layer in self.all_layers[:10]:
             x = layer(x)
 
         for layer in self.all_layers[10:]:
             try:
                 x = layer(x, training=training)
-                #print("Dis acceptable")
+                
             except:
                 x = layer(x)
-                print("DIs unacceptable")
+                
        
         return x
+
+    def call(self, x, training=False):
+
+        x = tf.cond(tf.constant(self.classifier,dtype=tf.bool), lambda: self.temp_call_classifier(x, training=training), lambda: self.temp_call(x, training=training))
+
+        return x
+    
+   
     
     def reset_metrics(self):
         
@@ -143,7 +200,7 @@ class Fake_detection(tf.keras.Model):
     
 if __name__ == "__main__":
     
-    fmodel = Fake_detection()
+    fmodel = Fake_detection(classifier=True)
     
     train_text, train_label, test_text, test_label, _, _ = data_preparation.get_dataset()
     train_text = fmodel.encode(train_text)
@@ -173,7 +230,10 @@ if __name__ == "__main__":
     
 
     for epoch in range(fmodel.num_epoch):
-    
+
+        if fmodel.classifier:
+            fmodel.gradual_unfreezing()
+        
         print(f"Epoch {epoch}:")
         
         # Training:
@@ -201,6 +261,8 @@ if __name__ == "__main__":
         
         for data in test_dataset:
             metrics = fmodel.test_step(data)
+
+            
         
         print([f"val_{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
         
@@ -216,7 +278,3 @@ if __name__ == "__main__":
 
     print(fmodel.summary())
     print(len(fmodel.layers))
-
-    
-
-    
