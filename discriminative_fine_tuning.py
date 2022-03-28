@@ -12,8 +12,10 @@ def get_optimizers(layers, num_epochs, num_updates_per_epoch, factor=2.6):
             lr_max = 0.01/(num * factor)
         except:
             lr_max = 0.01
-        
-        optimizers.append(tf.keras.optimizers.Adam(learning_rate=slanted_triangular_lr.STLR(num_epochs, num_updates_per_epoch, lr_max=lr_max)))
+        if type(num_epochs) == list:
+            optimizers.append(tf.keras.optimizers.Adam(learning_rate=slanted_triangular_lr.STLR(num_epochs[num], num_updates_per_epoch, lr_max=lr_max)))
+        else:
+            optimizers.append(tf.keras.optimizers.Adam(learning_rate=slanted_triangular_lr.STLR(num_epochs, num_updates_per_epoch, lr_max=lr_max)))
         #print(slanted_triangular_lr.STLR(num_epochs, num_updates_per_epoch, lr_max=lr_max))
 
     optimizers = optimizers[::-1]

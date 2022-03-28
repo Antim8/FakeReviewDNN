@@ -17,7 +17,7 @@ def get_dataset():
             label[j] = 1
         else:
             label[j] = 0
-    label = np.squeeze(label, axis=1)
+    
 
     # The review 
     text = pd.read_csv("fake_reviews_dataset.csv", usecols=[3]).values
@@ -25,11 +25,18 @@ def get_dataset():
 
     df = pd.DataFrame(columns=['text','label'])
     df['text'] = text
+
+    #label = np.expand_dims(label, axis=1)
+
+    #print(label)
+
     df['label'] = label
 
 
     # Shuffle the data, since it is sorted by categories
     df = df.sample(frac=1)
+
+    
 
     training_set_size = int(df.shape[0]*0.5)
 
@@ -50,6 +57,10 @@ def get_dataset():
 
     vali_text = vali_df.text.to_numpy()
     vali_label = vali_df.label.to_numpy()
+
+    train_label = np.expand_dims(train_label, axis=1)
+    test_label = np.expand_dims(test_label, axis=1)
+    vali_label = np.expand_dims(vali_label, axis=1)
 
     return train_text, train_label, test_text, test_label, vali_text, vali_label
 
@@ -112,3 +123,6 @@ def get_counts(text_data):
 
 
     
+#train_text, train_label, test_text, test_label, vali_text, vali_label = get_dataset()
+
+#print(train_label.shape)

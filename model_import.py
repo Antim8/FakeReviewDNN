@@ -31,6 +31,8 @@ def get_list_of_layers(model):
        
     return l
 
-lm_num, encoder_num, mask_num, spm_encoder_model = get_pretrained_model(70)
+#lm_num, encoder_num, mask_num, spm_encoder_model = get_pretrained_model(70)
 
-lm_num.summary()
+#lm_num.summary()
+
+
