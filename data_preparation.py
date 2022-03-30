@@ -1,9 +1,13 @@
 from cgi import test
+from tkinter.tix import DirTree
 import numpy as np
 import tensorflow as tf
 import pandas as pd
 from collections import Counter
-
+from model_import import get_pretrained_model
+from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
+from tensorflow_text import SentencepieceTokenizer
+from tensorflow.python.platform import gfile
 
 def get_dataset():
 
@@ -120,8 +124,49 @@ def get_counts(text_data):
         for word in text.split():
             count[word] += 1
         return count
+    
+def prepare_for_generation(text_data, model_path):
+    
+    model = gfile.GFile(model_path, 'rb').read()
+    spm = SentencepieceTokenizer(model, add_bos=True, add_eos=True)
+    revst = spm.tokenize(text_data)
+    revst = [list(x.numpy()) for x in revst]
+    inp = []
+    label = []
+    for r in revst:
+        
+        if len(r) < 5:
+            if len(r) <= 3 or 0 in r:
+                del(r)
+                continue
+        if len(r) >= 7 and r[-7:].count(0) >= 2:
+            del(r)
+            continue
+        if r[-2] == 0:
+            del(r)
+            continue
+        tmp_inp = tf.convert_to_tensor(r[:-2])
+        tmp_label = tf.convert_to_tensor(r[-2])
+        tmp_inp = spm.detokenize(tmp_inp)
+        tmp_label = spm.id_to_string(tmp_label)
+        inp.append(tmp_inp)
+        label.append(tmp_label)
+        
+    new_inp, new_label = [] , []
+    for i, l in zip(inp, label):
+        i = i.numpy().decode('utf-8')
+        l = l.numpy().decode('utf-8')
+        new_inp.append(i)
+        new_label.append(l)
+    data = pd.DataFrame(columns=['input','label'], data=zip(new_inp, new_label))
+    data.to_csv('rev_clean_data.csv', index=False)
+        
 
-
+if __name__ == "__main__":
+    #text_data = ["I love this movie so much <#br#>", "I hate this movie", "I love you"]
+    with open("./rev_data.txt", "r") as f:
+        text_data = f.readlines()
+    prepare_for_generation(text_data, "./shortenSPM.model")
     
 #train_text, train_label, test_text, test_label, vali_text, vali_label = get_dataset()
 

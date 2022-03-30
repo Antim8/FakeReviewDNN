@@ -6,10 +6,10 @@ from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
 
 
 
-def get_pretrained_model(seq_length):
+def get_pretrained_model(seq_length, model_path='tf2_ulmfit/enwiki100-toks-sp35k-cased.model'):
     
     # load the model
-    spm_args = {'spm_model_file': 'tf2_ulmfit/enwiki100-toks-sp35k-cased.model',
+    spm_args = {'spm_model_file': model_path,
                 'add_bos': True,
                 'add_eos': True,
                 'fixed_seq_len': seq_length}
