@@ -14,12 +14,25 @@ def get_pretrained_model(seq_length):
                 'add_eos': True,
                 'fixed_seq_len': seq_length}
     lm_num, encoder_num, mask_num, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
-                                                                        fixed_seq_len=seq_length)
+                                                                        fixed_seq_len=seq_length,
+                                                                        )
 
     # load the weights
-    encoder_num.load_weights('tf2_ulmfit/keras_weights/enwiki100_20epochs_toks_35k_cased')
+    encoder_num.load_weights('tf2_ulmfit/keras_weights/enwiki100_20epochs_toks_35k_cased').expect_partial() 
 
     return lm_num, encoder_num, mask_num, spm_encoder_model
 
+def get_list_of_layers(model):
+
+    l = []
+    for layer in model.layers:
+        
+        l.append(layer)
+       
+    return l
+
+#lm_num, encoder_num, mask_num, spm_encoder_model = get_pretrained_model(70)
+
+#lm_num.summary()
 
 
