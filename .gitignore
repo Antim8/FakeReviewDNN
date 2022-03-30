@@ -1,3 +1,4 @@
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -131,4 +132,5 @@ dmypy.json
 # Logs
 ./logs/*
 *events.out*
-./tf2_ulmfit/**
+tf2_ulmfit/**/*
+
