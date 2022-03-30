@@ -9,20 +9,22 @@ import slanted_triangular_lr
 import tensorflow_addons as tfa
 from discriminative_fine_tuning import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
-
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
+
 
 
 class Fake_detection(tf.keras.Model):
     def __init__(self, classifier=False):
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 20
+        self.num_epoch = 2
         self.num_updates_per_epoch = 316
 
         self.classifier = classifier
 
-        self.lm_num, self.encoder_num, _, self.spm_encoder_model = mi.get_pretrained_model(256)
+        seq_length = 256
+
+        self.lm_num, self.encoder_num, _, self.spm_encoder_model = mi.get_pretrained_model(seq_length)
 
         
 
@@ -63,7 +65,7 @@ class Fake_detection(tf.keras.Model):
                             #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
                         ]
             self.loss_function = tf.keras.losses.SparseCategoricalCrossentropy()  
-            pretrained_layers = mi.get_list_of_layers(self.lm_num)
+            pretrained_layers = mi.prepare_pretrained_model(self.encoder_num, 'shortenSPM.model', seq_length, 3916)
             num_epochs_list = self.num_epoch
 
         for layer in pretrained_layers:
@@ -165,6 +167,11 @@ class Fake_detection(tf.keras.Model):
         
         with tf.GradientTape() as tape:
             predictions = self(x, training=True)
+
+            fmodel.summary()
+
+            print(predictions)
+
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
         
         gradients = tape.gradient(loss, self.trainable_variables)
@@ -200,7 +207,7 @@ class Fake_detection(tf.keras.Model):
     
 if __name__ == "__main__":
     
-    fmodel = Fake_detection(classifier=True)
+    fmodel = Fake_detection(classifier=False)
     
     train_text, train_label, test_text, test_label, _, _ = data_preparation.get_dataset()
     train_text = fmodel.encode(train_text)

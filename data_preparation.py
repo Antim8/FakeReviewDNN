@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 from collections import Counter
+from itertools import chain
 
 
 def get_dataset():
@@ -121,8 +122,99 @@ def get_counts(text_data):
             count[word] += 1
         return count
 
+def get_amazon_data():
+
+    path = "rev_data.txt"
+
+    file = open(path, 'r')
+    reviews = file.readlines()
+
+    for i, review in enumerate(reviews):
+        reviews[i] = review.rstrip('\n')
+        
+
+    return reviews
+
+def get_tokens_to_keep(text, tokenizer):
+
+    tokens = []
+
+    for line in text:
+        for word in line.split():
+
+            tokens.append(tokenizer.string_to_id(word).numpy())
+
+    return list(set(tokens))
+
+def shorten_SPM(SPM, tokenizer):
+
+    tokens_to_keep = get_tokens_to_keep(get_amazon_data(), tokenizer)
+
+    index = len(SPM.pieces) - 1
+
+    keep = []
+
+    while len(SPM.pieces):
+
+        piece = SPM.pieces.pop()
+        if index < 1_000 or index in tokens_to_keep:
+            keep.append(piece)
+            #print(index, "<--->", piece)
+
+        index -= 1
+
+    keep = list(reversed(keep))
+
+    for piece in keep:
+        SPM.pieces.append(piece)
+    
+
+    with open("shortenSPM.model", 'wb') as f:
+        f.write(SPM.SerializeToString())
+
+
+
+
+
+
 
     
-#train_text, train_label, test_text, test_label, vali_text, vali_label = get_dataset()
 
-#print(train_label.shape)
+    
+        
+
+        
+ 
+    
+
+   
+
+'''from tensorflow_text import SentencepieceTokenizer
+
+
+from tensorflow.python.platform import gfile
+
+model = gfile.GFile('tf2_ulmfit/enwiki100-toks-sp35k-cased.model', 'rb').read()
+
+tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+
+print(tokenizer.string_to_id("this"))'''
+
+'''from sentencepiece import sentencepiece_model_pb2 as model
+
+m = model.ModelProto()
+m.ParseFromString(open("tf2_ulmfit/enwiki100-toks-sp35k-cased.model", 'rb').read())
+
+
+a = shorten_SPM(m ,tokenizer)
+print(a)
+
+
+model = gfile.GFile('shortenSPM.model', 'rb').read()
+tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+print(tokenizer.vocab_size())'''
+
+'''import sentencepiece as spm
+sp = spm.SentencePieceProcessor(model_file='shortenSPM.model')
+vocabs = [sp.id_to_piece(id) for id in range(sp.get_piece_size())]
+print(len(vocabs))'''
