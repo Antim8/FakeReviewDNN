@@ -17,7 +17,7 @@ class Fake_detection(tf.keras.Model):
     def __init__(self, classifier=False):
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 2
+        self.num_epoch = 1
         self.num_updates_per_epoch = 316
 
         self.classifier = classifier
@@ -65,7 +65,7 @@ class Fake_detection(tf.keras.Model):
                             #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
                         ]
             self.loss_function = tf.keras.losses.SparseCategoricalCrossentropy()  
-            pretrained_layers = mi.prepare_pretrained_model(self.encoder_num, 'shortenSPM.model', seq_length, 3916)
+            pretrained_layers = mi.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
             num_epochs_list = self.num_epoch
 
         for layer in pretrained_layers:
@@ -87,7 +87,7 @@ class Fake_detection(tf.keras.Model):
         self.optimizer = tfa.optimizers.MultiOptimizer(self.optimizers_and_layers)
         #self.optimizer = tf.keras.optimizers.Adam()
 
-        print(self.no_training, "<---------")
+        
 
     def encode(self, text):
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
@@ -105,7 +105,7 @@ class Fake_detection(tf.keras.Model):
     def temp_call_classifier(self, x, training=False):
     
         training = self.training_list * training + self.no_training * (int(training)+1)
-        print(training)
+        
         
 
         for i, layer in enumerate(self.all_layers[:10]):
@@ -142,7 +142,6 @@ class Fake_detection(tf.keras.Model):
                 
             except:
                 x = layer(x)
-                
        
         return x
 
@@ -168,9 +167,9 @@ class Fake_detection(tf.keras.Model):
         with tf.GradientTape() as tape:
             predictions = self(x, training=True)
 
-            fmodel.summary()
+            #fmodel.summary()
 
-            print(predictions)
+            #print(predictions)
 
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
         
@@ -203,12 +202,11 @@ class Fake_detection(tf.keras.Model):
             metric.update_state(targets, predictions)
 
         return {m.name: m.result() for m in self.metrics}
-    
-    
-if __name__ == "__main__":
-    
-    fmodel = Fake_detection(classifier=False)
-    
+
+
+
+def load_fake_review_ds(fmodel):
+
     train_text, train_label, test_text, test_label, _, _ = data_preparation.get_dataset()
     train_text = fmodel.encode(train_text)
     test_text = fmodel.encode(test_text)
@@ -220,6 +218,27 @@ if __name__ == "__main__":
     test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
     train_dataset = data_preparation.data_pipeline(train_dataset)
     test_dataset = data_preparation.data_pipeline(test_dataset)
+
+    return train_dataset, test_dataset
+
+def load_fine_tuning_ds():
+
+    return None
+
+    
+    
+if __name__ == "__main__":
+
+    classifier = False
+    
+    fmodel = Fake_detection(classifier=classifier)
+
+    if classifier:
+        train_dataset, test_dataset = load_fake_review_ds(fmodel)
+    else:
+        train_dataset, test_dataset = load_fine_tuning_ds(fmodel)
+    
+    
     
     # Define where to save the log
     hyperparameter_string = "First_run"
@@ -240,6 +259,7 @@ if __name__ == "__main__":
 
         if fmodel.classifier:
             fmodel.gradual_unfreezing()
+        
         
         print(f"Epoch {epoch}:")
         

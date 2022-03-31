@@ -172,6 +172,79 @@ def shorten_SPM(SPM, tokenizer):
     with open("shortenSPM.model", 'wb') as f:
         f.write(SPM.SerializeToString())
 
+def merge_SPM(new_SPM, old_SPM):
+
+    new_pieces = []
+    temp_pieces = []
+
+    for piece in old_SPM.pieces:
+
+        temp_pieces.append(piece.piece)
+
+    for piece in new_SPM.pieces:
+
+        if piece.piece not in temp_pieces:
+            new_pieces.append(piece)
+
+    for piece in new_pieces:
+        old_SPM.pieces.append(piece)
+
+    with open("new_amazon.model", 'wb') as f:
+        f.write(old_SPM.SerializeToString())
+
+   
+
+
+'''from sentencepiece import sentencepiece_model_pb2 as model
+
+old = model.ModelProto()
+old.ParseFromString(open("shortenSPM.model", 'rb').read())
+
+new = model.ModelProto()
+new.ParseFromString(open("amazon.model", 'rb').read())
+
+
+
+
+
+
+extent(new, old)'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#import sentencepiece as spm
+
+'''from tensorflow.python.platform import gfile
+model = gfile.GFile('amazon.model', 'rb').read()
+sp = spm.SentencePieceProcessor(model_file=model)
+vocabs = [sp.id_to_piece(id) for id in range(sp.get_piece_size())]
+print(len(vocabs))'''
+
+'''sp = spm.SentencePieceProcessor()
+sp.load('new_amazon.model')
+
+print(sp.get_piece_size())
+
+
+for id in range(20):
+  print(sp.id_to_piece(id), sp.is_control(id))'''
+
+    
+
+
 
 
 

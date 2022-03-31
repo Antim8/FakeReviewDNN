@@ -4,6 +4,8 @@
 
 from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
 import tensorflow as tf
+from tensorflow_text import SentencepieceTokenizer
+from tensorflow.python.platform import gfile
 
 
 
@@ -23,7 +25,7 @@ def get_pretrained_model(seq_length):
 
     return lm_num, encoder_num, mask_num, spm_encoder_model
 
-def prepare_pretrained_model(pretrained_model, new_spm, seq_length, vocab_size):
+def prepare_pretrained_model(pretrained_model, new_spm, seq_length):
 
     layers = get_list_of_layers(pretrained_model)
 
@@ -36,6 +38,15 @@ def prepare_pretrained_model(pretrained_model, new_spm, seq_length, vocab_size):
     lm_num, encoder_num, mask_num, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
                                                                         fixed_seq_len=seq_length,
                                                                       )
+
+    model = gfile.GFile(new_spm, 'rb').read()
+
+    tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+
+    vocab_size = tokenizer.vocab_size()
+    
+    
+
     new_layers = get_list_of_layers(encoder_num)
 
     keep = []
