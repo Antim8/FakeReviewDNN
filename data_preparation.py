@@ -145,8 +145,8 @@ def prepare_for_generation(text_data, model_path):
         if r[-2] == 0:
             del(r)
             continue
-        tmp_inp = tf.convert_to_tensor(r[:-2])
-        tmp_label = tf.convert_to_tensor(r[-2])
+        tmp_inp = tf.convert_to_tensor(r[:-3])
+        tmp_label = tf.convert_to_tensor(r[-3])
         tmp_inp = spm.detokenize(tmp_inp)
         tmp_label = spm.id_to_string(tmp_label)
         inp.append(tmp_inp)
