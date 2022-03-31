@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 from collections import Counter
+from itertools import chain
 from model_import import get_pretrained_model
 from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
 from tensorflow_text import SentencepieceTokenizer
@@ -124,6 +125,128 @@ def get_counts(text_data):
         for word in text.split():
             count[word] += 1
         return count
+
+
+def get_amazon_data():
+
+    path = "rev_data.txt"
+
+    file = open(path, 'r')
+    reviews = file.readlines()
+
+    for i, review in enumerate(reviews):
+        reviews[i] = review.rstrip('\n')
+        
+
+    return reviews
+
+def get_tokens_to_keep(text, tokenizer):
+
+    tokens = []
+
+    for line in text:
+        for word in line.split():
+
+            tokens.append(tokenizer.string_to_id(word).numpy())
+
+    return list(set(tokens))
+
+def shorten_SPM(SPM, tokenizer):
+
+    tokens_to_keep = get_tokens_to_keep(get_amazon_data(), tokenizer)
+
+    index = len(SPM.pieces) - 1
+
+    keep = []
+
+    while len(SPM.pieces):
+
+        piece = SPM.pieces.pop()
+        if index < 1_000 or index in tokens_to_keep:
+            keep.append(piece)
+            #print(index, "<--->", piece)
+
+        index -= 1
+
+    keep = list(reversed(keep))
+
+    for piece in keep:
+        SPM.pieces.append(piece)
+    
+
+    with open("shortenSPM.model", 'wb') as f:
+        f.write(SPM.SerializeToString())
+
+def merge_SPM(new_SPM, old_SPM):
+
+    new_pieces = []
+    temp_pieces = []
+
+    for piece in old_SPM.pieces:
+
+        temp_pieces.append(piece.piece)
+
+    for piece in new_SPM.pieces:
+
+        if piece.piece not in temp_pieces:
+            new_pieces.append(piece)
+
+    for piece in new_pieces:
+        old_SPM.pieces.append(piece)
+
+    with open("new_amazon.model", 'wb') as f:
+        f.write(old_SPM.SerializeToString())
+
+   
+
+
+'''from sentencepiece import sentencepiece_model_pb2 as model
+
+old = model.ModelProto()
+old.ParseFromString(open("shortenSPM.model", 'rb').read())
+
+new = model.ModelProto()
+new.ParseFromString(open("amazon.model", 'rb').read())
+
+
+
+
+
+
+extent(new, old)'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#import sentencepiece as spm
+
+'''from tensorflow.python.platform import gfile
+model = gfile.GFile('amazon.model', 'rb').read()
+sp = spm.SentencePieceProcessor(model_file=model)
+vocabs = [sp.id_to_piece(id) for id in range(sp.get_piece_size())]
+print(len(vocabs))'''
+
+'''sp = spm.SentencePieceProcessor()
+sp.load('new_amazon.model')
+
+print(sp.get_piece_size())
+
+
+for id in range(20):
+  print(sp.id_to_piece(id), sp.is_control(id))'''
+
     
 def prepare_for_generation(text_data, model_path):
     
@@ -167,7 +290,53 @@ if __name__ == "__main__":
     with open("./rev_data.txt", "r") as f:
         text_data = f.readlines()
     prepare_for_generation(text_data, "./shortenSPM.model")
-    
-#train_text, train_label, test_text, test_label, vali_text, vali_label = get_dataset()
 
-#print(train_label.shape)
+    
+
+
+
+
+
+
+
+
+    
+
+    
+        
+
+        
+ 
+    
+
+   
+
+'''from tensorflow_text import SentencepieceTokenizer
+
+
+from tensorflow.python.platform import gfile
+
+model = gfile.GFile('tf2_ulmfit/enwiki100-toks-sp35k-cased.model', 'rb').read()
+
+tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+
+print(tokenizer.string_to_id("this"))'''
+
+'''from sentencepiece import sentencepiece_model_pb2 as model
+
+m = model.ModelProto()
+m.ParseFromString(open("tf2_ulmfit/enwiki100-toks-sp35k-cased.model", 'rb').read())
+
+
+a = shorten_SPM(m ,tokenizer)
+print(a)
+
+
+model = gfile.GFile('shortenSPM.model', 'rb').read()
+tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+print(tokenizer.vocab_size())'''
+
+'''import sentencepiece as spm
+sp = spm.SentencePieceProcessor(model_file='shortenSPM.model')
+vocabs = [sp.id_to_piece(id) for id in range(sp.get_piece_size())]
+print(len(vocabs))'''
