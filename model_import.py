@@ -60,8 +60,7 @@ def prepare_pretrained_model(pretrained_model, new_spm, seq_length):
     keep.append(tf.keras.layers.GlobalAveragePooling1D())
     keep.append(tf.keras.layers.Dense(vocab_size, activation='softmax'))
  
-
-    return keep
+    return keep, spm_encoder_model
 
 
 def get_list_of_layers(model):

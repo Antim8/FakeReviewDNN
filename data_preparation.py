@@ -9,6 +9,8 @@ from model_import import get_pretrained_model
 from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
 from tensorflow_text import SentencepieceTokenizer
 from tensorflow.python.platform import gfile
+import sentencepiece
+from ast import literal_eval
 
 def get_dataset():
 
@@ -41,7 +43,6 @@ def get_dataset():
     # Shuffle the data, since it is sorted by categories
     df = df.sample(frac=1)
 
-    
 
     training_set_size = int(df.shape[0]*0.5)
 
@@ -68,6 +69,47 @@ def get_dataset():
     vali_label = np.expand_dims(vali_label, axis=1)
 
     return train_text, train_label, test_text, test_label, vali_text, vali_label
+
+def get_amazon_dataset():
+
+    df = pd.read_csv("rev_clean_data.csv")
+    df.columns = ['text', 'label']
+
+    df = df.dropna(how='any', axis=0)
+
+    print(len(df['label'][0]))
+    labels = []
+
+    for l in df['label'][:]:
+        labels.append(literal_eval(l))
+
+    df.label = labels
+
+    
+    print(df.head())
+    
+
+    #for element in df.label.to_numpy():
+    #    print(len(element))
+
+    training_size = int(df.shape[0]*0.7)
+
+    train_df = df[:training_size]
+    test_df = df[training_size:]
+
+    train_text = train_df.text.to_numpy()
+    train_label = train_df.label #.to_numpy()
+    #print(train_label.shape)
+
+    test_text = test_df.text.to_numpy()
+    test_label = test_df.label.to_numpy()
+
+    return train_text, train_label, test_text, test_label
+
+#a,b,c,d = get_amazon_dataset()
+
+#print(b, b.shape)
+
 
 def get_dataframe():
 
@@ -196,57 +238,6 @@ def merge_SPM(new_SPM, old_SPM):
 
     with open("new_amazon.model", 'wb') as f:
         f.write(old_SPM.SerializeToString())
-
-   
-
-
-'''from sentencepiece import sentencepiece_model_pb2 as model
-
-old = model.ModelProto()
-old.ParseFromString(open("shortenSPM.model", 'rb').read())
-
-new = model.ModelProto()
-new.ParseFromString(open("amazon.model", 'rb').read())
-
-
-
-
-
-
-extent(new, old)'''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#import sentencepiece as spm
-
-'''from tensorflow.python.platform import gfile
-model = gfile.GFile('amazon.model', 'rb').read()
-sp = spm.SentencePieceProcessor(model_file=model)
-vocabs = [sp.id_to_piece(id) for id in range(sp.get_piece_size())]
-print(len(vocabs))'''
-
-'''sp = spm.SentencePieceProcessor()
-sp.load('new_amazon.model')
-
-print(sp.get_piece_size())
-
-
-for id in range(20):
-  print(sp.id_to_piece(id), sp.is_control(id))'''
-
     
 def prepare_for_generation(text_data, model_path):
     
@@ -281,10 +272,71 @@ def prepare_for_generation(text_data, model_path):
         l = l.numpy().decode('utf-8')
         new_inp.append(i)
         new_label.append(l)
-    data = pd.DataFrame(columns=['input','label'], data=zip(new_inp, new_label))
-    data.to_csv('rev_clean_data.csv', index=False)
-        
 
+    labels = []
+    sp = sentencepiece.SentencePieceProcessor()
+    sp.load('new_amazon.model')
+    for label in new_label:
+        temp = []
+        for id in range(sp.vocab_size()):
+            if sp.id_to_piece(id) == label:
+                temp.append(1)
+            else: 
+                temp.append(0)
+        labels.append(temp)
+
+
+    new_label = labels
+
+
+    
+    data = pd.DataFrame(columns=['input','label'], data=zip(new_inp, new_label))
+    data.to_parquet('rev_clean_data.parquet')
+
+
+'''from sentencepiece import sentencepiece_model_pb2 as model
+
+old = model.ModelProto()
+old.ParseFromString(open("shortenSPM.model", 'rb').read())
+
+new = model.ModelProto()
+new.ParseFromString(open("amazon.model", 'rb').read())
+
+
+
+
+
+
+extent(new, old)'''
+
+
+
+#a,b,c,d = get_amazon_dataset()
+
+#print(b, b.shape)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''from tensorflow.python.platform import gfile
+model = gfile.GFile('amazon.model', 'rb').read()
+sp = spm.SentencePieceProcessor(model_file=model)
+vocabs = [sp.id_to_piece(id) for id in range(sp.get_piece_size())]
+print(len(vocabs))'''
+
+        
 if __name__ == "__main__":
     #text_data = ["I love this movie so much <#br#>", "I hate this movie", "I love you"]
     with open("./rev_data.txt", "r") as f:
