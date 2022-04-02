@@ -4,7 +4,7 @@ import math
 
 class STLR(tf.keras.optimizers.schedules.LearningRateSchedule):
 
-    def __init__(self, num_epochs, updates_perepoch, cut_frac=0.1, ratio=32, lr_max=0.01):
+    def __init__(self, num_epochs : int, updates_perepoch : int, cut_frac : float = 0.1, ratio : int = 32, lr_max : float =0.01):
 
         self.cut_frac = cut_frac
         self.ratio = ratio
@@ -17,7 +17,7 @@ class STLR(tf.keras.optimizers.schedules.LearningRateSchedule):
 
         self.lr = 0
 
-    def __call__(self, step):
+    def __call__(self, step : int) -> float:
 
         help1 = step < self.cut
         help1 = tf.cast(help1, tf.float32)
@@ -26,13 +26,5 @@ class STLR(tf.keras.optimizers.schedules.LearningRateSchedule):
         p = help1 * (step/self.cut) + help2 * (1-((step-self.cut)/(self.cut*((1/self.cut_frac)-1))))
 
         self.lr = self.lr_max * ((1+p*(self.ratio-1))/self.ratio)
-        print(f"{self}   with lr: {self.lr}")
 
         return self.lr
-    
-    def get_lr(self):
-
-        return self.lr
-
-
-
