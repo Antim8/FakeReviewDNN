@@ -1,8 +1,7 @@
 import tensorflow as tf
-import tensorflow_addons as tfa
 import slanted_triangular_lr
 
-def get_optimizers(layers, num_epochs, num_updates_per_epoch, factor=2.6):
+def get_optimizers(layers : tf.keras.layers, num_epochs : int, num_updates_per_epoch : int, factor : float=2.6) -> list:
 
     optimizers = []
     num_layers = len(layers)
@@ -16,7 +15,6 @@ def get_optimizers(layers, num_epochs, num_updates_per_epoch, factor=2.6):
             optimizers.append(tf.keras.optimizers.Adam(learning_rate=slanted_triangular_lr.STLR(num_epochs[num], num_updates_per_epoch, lr_max=lr_max)))
         else:
             optimizers.append(tf.keras.optimizers.Adam(learning_rate=slanted_triangular_lr.STLR(num_epochs, num_updates_per_epoch, lr_max=lr_max)))
-        #print(slanted_triangular_lr.STLR(num_epochs, num_updates_per_epoch, lr_max=lr_max))
 
     optimizers = optimizers[::-1]
     
