@@ -72,22 +72,16 @@ def get_dataset():
 
 def get_amazon_dataset():
 
-    df = pd.read_csv("rev_clean_data.csv")
+    df = pd.read_parquet("rev_clean_data.parquet")
     df.columns = ['text', 'label']
 
     df = df.dropna(how='any', axis=0)
 
-    print(len(df['label'][0]))
     labels = []
 
-    for l in df['label'][:]:
-        labels.append(literal_eval(l))
-
+    for l in df.label:
+        labels.append(l.tolist())
     df.label = labels
-
-    
-    print(df.head())
-    
 
     #for element in df.label.to_numpy():
     #    print(len(element))
@@ -98,17 +92,17 @@ def get_amazon_dataset():
     test_df = df[training_size:]
 
     train_text = train_df.text.to_numpy()
-    train_label = train_df.label #.to_numpy()
+    train_label = train_df.label.tolist()
     #print(train_label.shape)
 
     test_text = test_df.text.to_numpy()
-    test_label = test_df.label.to_numpy()
+    test_label = test_df.label.tolist()
 
     return train_text, train_label, test_text, test_label
 
 #a,b,c,d = get_amazon_dataset()
 
-#print(b, b.shape)
+#print(np.asarray(b).shape)
 
 
 def get_dataframe():
@@ -307,7 +301,8 @@ new.ParseFromString(open("amazon.model", 'rb').read())
 
 
 
-extent(new, old)'''
+merge_SPM(new, old)
+print("rdy")'''
 
 
 
@@ -341,7 +336,7 @@ if __name__ == "__main__":
     #text_data = ["I love this movie so much <#br#>", "I hate this movie", "I love you"]
     with open("./rev_data.txt", "r") as f:
         text_data = f.readlines()
-    prepare_for_generation(text_data, "./shortenSPM.model")
+    prepare_for_generation(text_data, "./new_amazon.model")
 
     
 
