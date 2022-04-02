@@ -65,7 +65,7 @@ class Fake_detection(tf.keras.Model):
                             #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
                         ]
             self.loss_function = tf.keras.losses.SparseCategoricalCrossentropy()  
-            pretrained_layers = mi.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
+            pretrained_layers, self.spm_encoder_model = mi.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
             num_epochs_list = self.num_epoch
 
         for layer in pretrained_layers:
@@ -90,7 +90,14 @@ class Fake_detection(tf.keras.Model):
         
 
     def encode(self, text):
+        #print(text)
+
+        
+        #print(tf.constant(text, dtype=tf.string))
+        
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
+       
+
 
     def gradual_unfreezing(self):
 
@@ -169,7 +176,6 @@ class Fake_detection(tf.keras.Model):
 
             #fmodel.summary()
 
-            #print(predictions)
 
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
         
@@ -204,27 +210,6 @@ class Fake_detection(tf.keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
-
-def load_fake_review_ds(fmodel):
-
-    train_text, train_label, test_text, test_label, _, _ = data_preparation.get_dataset()
-    train_text = fmodel.encode(train_text)
-    test_text = fmodel.encode(test_text)
-    
-    train_label = train_label.astype('int32')
-    test_label = test_label.astype('int32')
-    
-    train_dataset = tf.data.Dataset.from_tensor_slices((train_text, train_label))
-    test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
-    train_dataset = data_preparation.data_pipeline(train_dataset)
-    test_dataset = data_preparation.data_pipeline(test_dataset)
-
-    return train_dataset, test_dataset
-
-def load_fine_tuning_ds():
-
-    return None
-
     
     
 if __name__ == "__main__":
@@ -234,9 +219,33 @@ if __name__ == "__main__":
     fmodel = Fake_detection(classifier=classifier)
 
     if classifier:
-        train_dataset, test_dataset = load_fake_review_ds(fmodel)
+        train_text, train_label, test_text, test_label,_,_ = data_preparation.get_dataset()
+
+        train_label = train_label.astype('int32')
+        test_label = test_label.astype('int32')
+
+        
+
     else:
-        train_dataset, test_dataset = load_fine_tuning_ds(fmodel)
+        train_text, train_label, test_text, test_label = data_preparation.get_amazon_dataset()
+
+
+    
+
+
+
+
+    train_text = fmodel.encode(train_text)
+    test_text = fmodel.encode(test_text)
+    
+    
+    
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_text, train_label))
+    test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
+    train_dataset = data_preparation.data_pipeline(train_dataset)
+    test_dataset = data_preparation.data_pipeline(test_dataset)
+
+    
     
     
     
@@ -270,8 +279,6 @@ if __name__ == "__main__":
             #print(fmodel.optimizer.get_config())
             #print(fmodel.optimizers_and_layers)
             
-            
-  
         # print the metrics
         print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
         
