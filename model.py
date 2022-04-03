@@ -160,6 +160,7 @@ class Fake_detection(tf.keras.Model):
         with tf.GradientTape() as tape:
             
             predictions = self(x, training=True)
+
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
         
         gradients = tape.gradient(loss, self.trainable_variables)
@@ -214,8 +215,10 @@ if __name__ == "__main__":
         
     train_dataset = tf.data.Dataset.from_tensor_slices((train_text, train_label))
     test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
-    train_dataset = data_preparation.data_pipeline(train_dataset)
-    test_dataset = data_preparation.data_pipeline(test_dataset)
+    train_dataset = data_preparation.data_pipeline(train_dataset, batch=1)
+    test_dataset = data_preparation.data_pipeline(test_dataset, batch=1)
+
+    print("Done Preprocess")
 
     
     # Define where to save the log
