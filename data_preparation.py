@@ -51,16 +51,15 @@ def get_dataset() -> tuple:
 
 def get_amazon_dataset() -> tuple:
 
-    df = pd.read_csv("rev_clean_data.csv")
+    df = pd.read_parquet("rev_clean_data.parquet")
     df.columns = ['text', 'label']
 
     df = df.dropna(how='any', axis=0)
 
     labels = []
 
-    for l in df['label'][:]:
-        labels.append(literal_eval(l))
-
+    for l in df.label:
+        labels.append(l.tolist())
     df.label = labels
 
     training_size = int(df.shape[0]*0.7)
@@ -69,10 +68,11 @@ def get_amazon_dataset() -> tuple:
     test_df = df[training_size:]
 
     train_text = train_df.text.to_numpy()
-    train_label = train_df.label
+    train_label = train_df.label.tolist()
+
 
     test_text = test_df.text.to_numpy()
-    test_label = test_df.label.to_numpy()
+    test_label = test_df.label.tolist()
 
     return train_text, train_label, test_text, test_label
 
@@ -209,9 +209,11 @@ def prepare_for_generation(text_data:str, model_path:str):
     
     data = pd.DataFrame(columns=['input','label'], data=zip(new_inp, new_label))
     data.to_parquet('rev_clean_data.parquet')
+
         
 if __name__ == "__main__":
     
     with open("./rev_data.txt", "r") as f:
         text_data = f.readlines()
-    prepare_for_generation(text_data, "./shortenSPM.model")
+    prepare_for_generation(text_data, "./new_amazon.model")
+
