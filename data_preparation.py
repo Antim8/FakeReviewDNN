@@ -8,7 +8,6 @@ from tensorflow_text import SentencepieceTokenizer
 from tensorflow.python.platform import gfile
 
 
-
 def get_dataset() -> tuple: 
 
     # CG = Computer-generated fake reviews; OR = Original reviews
@@ -222,8 +221,20 @@ if __name__ == "__main__":
 
 
 
+    labels = []
+    sp = sentencepiece.SentencePieceProcessor()
+    sp.load('new_amazon.model')
+    for label in new_label:
+        temp = []
+        for id in range(sp.vocab_size()):
+            if sp.id_to_piece(id) == label:
+                temp.append(1)
+            else: 
+                temp.append(0)
+        labels.append(temp)
 
 
+    new_label = labels
 
 
     
@@ -240,8 +251,11 @@ print(tokenizer.vocab_size())'''
         
 
         
- 
+if __name__ == "__main__":
     
+    with open("./rev_data.txt", "r") as f:
+        text_data = f.readlines()
+    prepare_for_generation(text_data, "./new_amazon.model")
 
    
 
