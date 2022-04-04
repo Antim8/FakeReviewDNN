@@ -1,15 +1,11 @@
-# Ich denke, dass beste ist mit dem ULMfit model von tensorflow_hub zu arbeiten 
-# documentation: https://bitbucket.org/edroneteam/tf2_ulmfit/src/master/
-# vorher halt noch sich die dateien ziehen und die requirements installieren -> habs mal noch nich commited wegen upload
+import tensorflow as tf
+from tensorflow.python.platform import gfile
+from tensorflow_text import SentencepieceTokenizer
 
 from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
-import tensorflow as tf
-from tensorflow_text import SentencepieceTokenizer
-from tensorflow.python.platform import gfile
 
 
-
-def get_pretrained_model(seq_length, model_path='tf2_ulmfit/enwiki100-toks-sp35k-cased.model'):
+def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki100-toks-sp35k-cased.model') -> tuple:
     
     # load the model
     spm_args = {'spm_model_file': model_path,
@@ -17,33 +13,36 @@ def get_pretrained_model(seq_length, model_path='tf2_ulmfit/enwiki100-toks-sp35k
                 'add_eos': True,
                 'fixed_seq_len': seq_length}
     lm_num, encoder_num, mask_num, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
-                                                                        fixed_seq_len=seq_length,
+                                                                        fixed_seq_len=seq_length
                                                                         )
 
     # load the weights
-    encoder_num.load_weights('tf2_ulmfit/keras_weights/enwiki100_20epochs_toks_35k_cased').expect_partial() 
+    encoder_num.load_weights('tf2_ulmfit/enwiki100-toks-sp35k-cased.model').expect_partial() 
 
     return lm_num, encoder_num, mask_num, spm_encoder_model
 
-def prepare_pretrained_model(pretrained_model, new_spm, seq_length):
+def prepare_pretrained_model(pretrained_model : tf.keras.Model, new_spm : str, seq_length : int) -> tuple:
 
     layers = get_list_of_layers(pretrained_model)
 
     layers = layers[2:]
-
-    spm_args = {'spm_model_file': new_spm,
-                'add_bos': True,
-                'add_eos': True,
-                'fixed_seq_len': seq_length}
-    lm_num, encoder_num, mask_num, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
-                                                                        fixed_seq_len=seq_length,
-                                                                      )
 
     model = gfile.GFile(new_spm, 'rb').read()
 
     tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
 
     vocab_size = tokenizer.vocab_size()
+
+    spm_args = {'spm_model_file': new_spm,
+                'add_bos': True,
+                'add_eos': True,
+                'fixed_seq_len': seq_length}
+    _, encoder_num, _, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
+                                                                        fixed_seq_len=seq_length,
+                                                                        vocab_size=vocab_size
+                                                                      )
+
+    
     
     
 
@@ -60,11 +59,10 @@ def prepare_pretrained_model(pretrained_model, new_spm, seq_length):
     keep.append(tf.keras.layers.GlobalAveragePooling1D())
     keep.append(tf.keras.layers.Dense(vocab_size, activation='softmax'))
  
+    return keep, spm_encoder_model
 
-    return keep
 
-
-def get_list_of_layers(model):
+def get_list_of_layers(model : tf.keras.Model) -> list:
 
     l = []
     for layer in model.layers:
@@ -79,13 +77,15 @@ def get_list_of_layers(model):
 
 from tensorflow.python.platform import gfile
 
-model = gfile.GFile('shortenSPM.model', 'rb').read()
+model = gfile.GFile('new_amazon.model', 'rb').read()
 
 tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
 
-vocab_size = tokenizer.vocab_size()
+vocab_size = tokenizer.vocab_size() # 5269 
 
-lm_num, encoder_num, mask_num, spm_encoder_model = get_pretrained_model(70)
+print(vocab_size)'''
+
+'''lm_num, encoder_num, mask_num, spm_encoder_model = get_pretrained_model(70)
 
 layers = prepare_pretrained_model(encoder_num, 'shortenSPM.model', 70, vocab_size)
 

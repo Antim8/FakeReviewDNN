@@ -1,24 +1,25 @@
 import tensorflow as tf
-import tensorflow_datasets as tfds
-import math
 import model_import as mi
 from tqdm import tqdm
 import datetime
 import data_preparation
-import slanted_triangular_lr
 import tensorflow_addons as tfa
 from discriminative_fine_tuning import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
 
+from test import testoo
+
 
 
 class Fake_detection(tf.keras.Model):
+    
     def __init__(self, classifier=False):
+        
         super(Fake_detection, self).__init__()
 
         self.num_epoch = 1
-        self.num_updates_per_epoch = 316
+        self.num_updates_per_epoch = 650
 
         self.classifier = classifier
 
@@ -29,13 +30,17 @@ class Fake_detection(tf.keras.Model):
         
 
         if classifier:
+
             self.metrics_list = [
                         tf.keras.metrics.Mean(name="loss"),
                         tf.keras.metrics.BinaryAccuracy(name="acc"),
-                        #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
                        ]
             self.loss_function = tf.keras.losses.BinaryCrossentropy()  
             pretrained_layers = mi.get_list_of_layers(self.encoder_num)
+
+            #self.encoder_num.summary()
+
+            pretrained_layers = testoo()
 
             pretrained_layers.append(ConcatPooler())
             pretrained_layers.append(tf.keras.layers.BatchNormalization(epsilon=1e-05, momentum=0.1, scale=False, center=False))
@@ -58,14 +63,15 @@ class Fake_detection(tf.keras.Model):
                 epoch = self.num_epoch - num
                 num_epochs_list.append(epoch)
 
+            print(pretrained_layers)
+
         else:
             self.metrics_list = [
                             tf.keras.metrics.Mean(name="loss"),
                             tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
-                            #tf.keras.metrics.TopKCategoricalAccuracy(3,name="top-3-acc") 
                         ]
-            self.loss_function = tf.keras.losses.SparseCategoricalCrossentropy()  
-            pretrained_layers = mi.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
+            self.loss_function = tf.keras.losses.CategoricalCrossentropy()  
+            pretrained_layers, self.spm_encoder_model = mi.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
             num_epochs_list = self.num_epoch
 
         for layer in pretrained_layers:
@@ -78,19 +84,19 @@ class Fake_detection(tf.keras.Model):
         self.training_list_index = len(pretrained_layers) - 1
 
         self.all_layers = pretrained_layers
-        #for layer in self.all_layers:
-        #    layer.trainable = True
 
-        # DFF
+        # Discriminiative fine tuning
         self.optimizers_and_layers = get_optimizers(layers=self.all_layers, num_epochs=num_epochs_list, num_updates_per_epoch=self.num_updates_per_epoch)
 
         self.optimizer = tfa.optimizers.MultiOptimizer(self.optimizers_and_layers)
-        #self.optimizer = tf.keras.optimizers.Adam()
 
         
 
-    def encode(self, text):
+    def encode(self, text : tf.string) -> tf.Tensor:
+
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
+       
+
 
     def gradual_unfreezing(self):
 
@@ -102,7 +108,7 @@ class Fake_detection(tf.keras.Model):
 
         self.training_list_index = (self.training_list_index - 1) * temp
 
-    def temp_call_classifier(self, x, training=False):
+    def temp_call_classifier(self, x : tf.Tensor, training : bool = False) -> tf.Tensor:
     
         training = self.training_list * training + self.no_training * (int(training)+1)
         
@@ -115,7 +121,6 @@ class Fake_detection(tf.keras.Model):
             except:
                 x = layer(x)
                
-        #print(self.encoder_num.output)
         x = self.all_layers[10](x)
 
 
@@ -124,14 +129,12 @@ class Fake_detection(tf.keras.Model):
             try:
                 layer.trainable = training[i]
                 x = layer(x)
-                #print(training[i],i)
             except:
                 x = layer(x)
-                #print('no')
 
         return x
     
-    def temp_call(self, x, training=False):
+    def temp_call(self, x : tf.Tensor, training : bool = False) -> tf.Tensor:
          
         for layer in self.all_layers[:10]:
             x = layer(x)
@@ -139,13 +142,12 @@ class Fake_detection(tf.keras.Model):
         for layer in self.all_layers[10:]:
             try:
                 x = layer(x, training=training)
-                
             except:
                 x = layer(x)
        
         return x
-
-    def call(self, x, training=False):
+    #TODO if else
+    def call(self, x : tf.Tensor, training : bool = False) -> tf.Tensor:
 
         x = tf.cond(tf.constant(self.classifier,dtype=tf.bool), lambda: self.temp_call_classifier(x, training=training), lambda: self.temp_call(x, training=training))
 
@@ -158,18 +160,15 @@ class Fake_detection(tf.keras.Model):
         for metric in self.metrics:
             metric.reset_states()
             
-    #@tf.function
-    def train_step(self, data):
+    #TODO tf function possible?
+    def train_step(self, data : tf.data.Dataset) -> dict:
         
         x, targets = data
-        apply_awd_eagerly(fmodel, 0.5) # wird applied? #slanted triangular lr auch in der library lieber beides selber oder von library nutzen
+        apply_awd_eagerly(fmodel, 0.5) 
         
         with tf.GradientTape() as tape:
+            
             predictions = self(x, training=True)
-
-            #fmodel.summary()
-
-            #print(predictions)
 
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
         
@@ -187,8 +186,8 @@ class Fake_detection(tf.keras.Model):
         # Return a dictionary mapping metric names to current value
         return {m.name: m.result() for m in self.metrics}
 
-    #@tf.function
-    def test_step(self, data):
+    #TODO tf function possible?
+    def test_step(self, data : tf.data.Dataset) -> dict:
 
         x, targets = data
         
@@ -204,41 +203,33 @@ class Fake_detection(tf.keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
+    
+    
+if __name__ == "__main__":
 
-def load_fake_review_ds(fmodel):
+    classifier = True
+    
+    fmodel = Fake_detection(classifier=classifier)
 
-    train_text, train_label, test_text, test_label, _, _ = data_preparation.get_dataset()
+    if classifier:
+        
+        train_text, train_label, test_text, test_label,_,_ = data_preparation.get_dataset()
+        train_label = train_label.astype('int32')
+        test_label = test_label.astype('int32')
+
+    else:
+        train_text, train_label, test_text, test_label = data_preparation.get_amazon_dataset()
+
     train_text = fmodel.encode(train_text)
     test_text = fmodel.encode(test_text)
-    
-    train_label = train_label.astype('int32')
-    test_label = test_label.astype('int32')
-    
+        
     train_dataset = tf.data.Dataset.from_tensor_slices((train_text, train_label))
     test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
     train_dataset = data_preparation.data_pipeline(train_dataset)
     test_dataset = data_preparation.data_pipeline(test_dataset)
 
-    return train_dataset, test_dataset
+    print("Done Preprocess")
 
-def load_fine_tuning_ds():
-
-    return None
-
-    
-    
-if __name__ == "__main__":
-
-    classifier = False
-    
-    fmodel = Fake_detection(classifier=classifier)
-
-    if classifier:
-        train_dataset, test_dataset = load_fake_review_ds(fmodel)
-    else:
-        train_dataset, test_dataset = load_fine_tuning_ds(fmodel)
-    
-    
     
     # Define where to save the log
     hyperparameter_string = "First_run"
@@ -264,14 +255,8 @@ if __name__ == "__main__":
         print(f"Epoch {epoch}:")
         
         # Training:
-        
         for data in tqdm(train_dataset,position=0, leave=True):
             metrics = fmodel.train_step(data)
-            #print(fmodel.optimizer.get_config())
-            #print(fmodel.optimizers_and_layers)
-            
-            
-  
         # print the metrics
         print([f"{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
         
@@ -284,13 +269,10 @@ if __name__ == "__main__":
         fmodel.reset_metrics()
         
         
-        # Validation:
-        
+        # Testing:
         for data in test_dataset:
             metrics = fmodel.test_step(data)
 
-            
-        
         print([f"val_{key}: {value}" for (key, value) in zip(list(metrics.keys()), list(metrics.values()))])
         
         # logging the validation metrics to the log file which is used by tensorboard
@@ -303,5 +285,14 @@ if __name__ == "__main__":
         
         print("\n")
 
-    print(fmodel.summary())
-    print(len(fmodel.layers))
+    if classifier:
+        
+
+        fmodel.save_weights('./weights/classifier_model')
+    else:
+        fmodel.summary()
+        fmodel.save('saved_model/fine_tuned_model')
+        fmodel.save_weights('./weights/lm_finetuning_model')
+
+
+
