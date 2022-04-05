@@ -15,5 +15,5 @@
 
 
 ## Additional but important 
-
+- uncased model usage?
 - model fuer generation 
