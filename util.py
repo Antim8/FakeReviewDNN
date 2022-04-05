@@ -12,6 +12,8 @@ from tensorflow_text import SentencepieceTokenizer
 from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
 
 
+
+
 def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki100-toks-sp35k-cased.model') -> tuple:
     """Returns models with trained weights (Wikipedia 35k) and the SentencePiece encoder model.
 
@@ -21,9 +23,9 @@ def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki1
 
     Returns:
         tuple: 
-            lm_num (tf.keras.engine.functional.Functional):            Language Model with head (softmax).
-            encoder_num (tf.keras.engine.functional.Functional):       Language Model without head.
-            spm_encoder_model (tf.keras.engine.functional.Functional): Model to encode text.
+            lm_num (tf.keras.Model):            Language Model with head (softmax).
+            encoder_num (tf.keras.Model):       Language Model without head.
+            spm_encoder_model (tf.keras.Model): Model to encode text.
             
     """
     
@@ -41,18 +43,18 @@ def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki1
 
     return lm_num, encoder_num, spm_encoder_model
 
-def prepare_pretrained_model(pretrained_model : tf.keras.engine.functional.Functional, new_spm : str, seq_length : int) -> tuple:
+def prepare_pretrained_model(pretrained_model : tf.keras.Model, new_spm : str, seq_length : int) -> tuple:
     """Returns layers of the model for fine tuning the general language model and the SentencePiece encoder model.
 
     Args:
-        pretrained_model (tf.keras.engine.functional.Functional): General domain language model.
+        pretrained_model (tf.keras.Model): General domain language model.
         new_spm (str): Path to the adjusted SentencePiece model.
         seq_length (int): Sequence Length.
 
     Returns:
         tuple: 
             keep (list):                                                Layers of the model for fine tuning the general language model.
-            spm_encoder_model (tf.keras.engine.functional.Functional):  Model to encode text.
+            spm_encoder_model (tf.keras.Model):                    Model to encode text.
     """
 
     layers = get_list_of_layers(pretrained_model)
@@ -128,7 +130,6 @@ def get_fine_tuned_layers():
    
     for layer in layers:
         model.add(layer)
-
 
     layers = []
 
@@ -285,11 +286,11 @@ def get_tokens_to_keep(text : list, tokenizer : SentencepieceTokenizer) -> list:
 #TODO typing
 
 #TODO what is SPM 
-def shorten_SPM(SPM : spm.sentencepiece_model_pb2.ModelProto, tokenizer:SentencepieceTokenizer):
+def shorten_SPM(SPM, tokenizer:SentencepieceTokenizer):
     """Deletes tokens of the Sentencepiece model, which do not appear in the amazon data.
 
     Args:
-        SPM (spm.sentencepiece_model_pb2.ModelProto):   Sentencepiece model to be shorten.
+        SPM:                                        Sentencepiece model to be shorten.
         tokenizer (SentencepieceTokenizer):         Sentencepiece Tokenizer trained on an existing corpus.
     """
 
@@ -316,12 +317,12 @@ def shorten_SPM(SPM : spm.sentencepiece_model_pb2.ModelProto, tokenizer:Sentence
     with open("shortenSPM.model", 'wb') as f:
         f.write(SPM.SerializeToString())
 #TODO typing
-def merge_SPM(first_SPM : spm.sentencepiece_model_pb2.ModelProto, second_SPM : spm.sentencepiece_model_pb2.ModelProto):
+def merge_SPM(first_SPM, second_SPM):
     """Compines the tokens of two sentencepiece models and creates a new model file.
 
     Args:
-        first_SPM (spm.sentencepiece_model_pb2.ModelProto):     Sentencepiece model to be combined.
-        second_SPM (spm.sentencepiece_model_pb2.ModelProto):    Sentencepiece model to be combined.
+        first_SPM:     Sentencepiece model to be combined.
+        second_SPM:    Sentencepiece model to be combined.
     """
 
     new_pieces = []

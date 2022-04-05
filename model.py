@@ -7,6 +7,8 @@ from model_util import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
 
+import test
+
 class Fake_detection(tf.keras.Model):
     """Subclass model with features inspired by ULMFiT."""
     
@@ -38,7 +40,9 @@ class Fake_detection(tf.keras.Model):
             temp_pretrained = util.get_list_of_layers(self.encoder_num)
 
             pretrained_layers = [temp_pretrained[0], temp_pretrained[1]]
-            #print(temp_pretrained[1])
+
+            util.get_fine_tuned_layers()
+            
             temp_pretrained2 = util.get_fine_tuned_layers()
             for layer in temp_pretrained2[2:]:
                 pretrained_layers.append(layer)
@@ -217,11 +221,9 @@ class Fake_detection(tf.keras.Model):
             predictions = self(x, training=True)
 
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
-        print('before')
-        print(self.trainable_variables)
-        print('after')
+        
         gradients = tape.gradient(loss, self.trainable_variables)
-        #print(gradients, np.asarray(gradients).shape)
+        
 
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         
