@@ -3,8 +3,21 @@ import math
 
 
 class STLR(tf.keras.optimizers.schedules.LearningRateSchedule):
+    """Subclass of tf.keras.optimizers.schedules.LearningRateSchedule to implement slanted triangular learning rates."""
 
     def __init__(self, num_epochs : int, updates_perepoch : int, cut_frac : float = 0.1, ratio : int = 32, lr_max : float =0.01):
+        """Init 
+
+        Args:
+            num_epochs (int):           Number of epochs.
+            updates_perepoch (int):     Updates per epoch.
+            cut_frac (float, optional): Percentage when to decrease. Defaults to 0.1.
+            ratio (int, optional):      Specifies the difference of size from the lowest lr to the maxium lr. Defaults to 32.
+            lr_max (float, optional):   Maxiumum Learning Rate. Defaults to 0.01.
+        """
+        
+
+      
 
         self.cut_frac = cut_frac
         self.ratio = ratio
@@ -18,6 +31,14 @@ class STLR(tf.keras.optimizers.schedules.LearningRateSchedule):
         self.lr = 0
 
     def __call__(self, step : int) -> float:
+        """Call function.
+
+        Args:
+            step (int): The current step of the learning process. 
+
+        Returns:
+            float: The calculated learning rate for the current step. 
+        """
 
         help1 = step < self.cut
         help1 = tf.cast(help1, tf.float32)

@@ -1,7 +1,18 @@
 import tensorflow as tf
 import slanted_triangular_lr
 
-def get_optimizers(layers : tf.keras.layers, num_epochs : int, num_updates_per_epoch : int, factor : float=2.6) -> list:
+def get_optimizers(layers : list, num_epochs : int, num_updates_per_epoch : int, factor : float=2.6) -> list:
+    """Returns a list of adam optimizers and their corresponding layers. 
+
+    Args:
+        layers (list):                  List of tf.keras.layers.
+        num_epochs (int):               Number of epochs.
+        num_updates_per_epoch (int):    Number of updates per epoch.
+        factor (float, optional):       Learning rates decrease per layer. Defaults to 2.6.
+
+    Returns:
+        list: Adam optimizers and their corresponding layers.
+    """
 
     optimizers = []
     num_layers = len(layers)

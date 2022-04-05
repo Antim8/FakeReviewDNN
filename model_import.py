@@ -6,22 +6,47 @@ from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
 
 
 def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki100-toks-sp35k-cased.model') -> tuple:
+    """Returns models with trained weights (Wikipedia 35k) and the SentencePiece encoder model.
+
+    Args:
+        seq_length (int): Sequence length.
+        model_path (str, optional): Path of a SentencePiece model. Defaults to 'tf2_ulmfit/enwiki100-toks-sp35k-cased.model'.
+
+    Returns:
+        tuple: 
+            lm_num (tf.keras.engine.functional.Functional):            Language Model with head (softmax).
+            encoder_num (tf.keras.engine.functional.Functional):       Language Model without head.
+            spm_encoder_model (tf.keras.engine.functional.Functional): Model to encode text.
+            
+    """
     
     # load the model
     spm_args = {'spm_model_file': model_path,
                 'add_bos': True,
                 'add_eos': True,
                 'fixed_seq_len': seq_length}
-    lm_num, encoder_num, mask_num, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
+    lm_num, encoder_num, _, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
                                                                         fixed_seq_len=seq_length
                                                                         )
 
     # load the weights
     encoder_num.load_weights('tf2_ulmfit/keras_weights/enwiki100_20epochs_toks_35k_cased').expect_partial() 
 
-    return lm_num, encoder_num, mask_num, spm_encoder_model
+    return lm_num, encoder_num, spm_encoder_model
 
-def prepare_pretrained_model(pretrained_model : tf.keras.Model, new_spm : str, seq_length : int) -> tuple:
+def prepare_pretrained_model(pretrained_model : tf.keras.engine.functional.Functional, new_spm : str, seq_length : int) -> tuple:
+    """Returns layers of the model for fine tuning the general language model and the SentencePiece encoder model.
+
+    Args:
+        pretrained_model (tf.keras.engine.functional.Functional): General domain language model.
+        new_spm (str): Path to the adjusted SentencePiece model.
+        seq_length (int): Sequence Length.
+
+    Returns:
+        tuple: 
+            keep (list):                                                Layers of the model for fine tuning the general language model.
+            spm_encoder_model (tf.keras.engine.functional.Functional):  Model to encode text.
+    """
 
     layers = get_list_of_layers(pretrained_model)
 
@@ -41,11 +66,6 @@ def prepare_pretrained_model(pretrained_model : tf.keras.Model, new_spm : str, s
                                                                         fixed_seq_len=seq_length,
                                                                         vocab_size=vocab_size
                                                                       )
-
-    
-    
-    
-
     new_layers = get_list_of_layers(encoder_num)
 
     keep = []
@@ -61,8 +81,14 @@ def prepare_pretrained_model(pretrained_model : tf.keras.Model, new_spm : str, s
  
     return keep, spm_encoder_model
 
-
 def get_list_of_layers(model : tf.keras.Model) -> list:
+    """Returns the layers of a given model.
+
+    Args:
+        model (tf.keras.Model): TensorFlow Model.
+    Returns:
+        list: Layers of the model.
+    """
 
     l = []
     for layer in model.layers:
@@ -71,10 +97,12 @@ def get_list_of_layers(model : tf.keras.Model) -> list:
        
     return l
 
-
-import model_import as mi
-
 def get_fine_tuned_layers():
+    """Return the layers of the saved model which is finetuned on amazon reviews.
+
+    Returns:
+        list: Layers of the fine tuned model.
+    """
     model = tf.keras.models.load_model('saved_model/fine_tuned_model')
 
     temp_layers = []
@@ -102,31 +130,3 @@ def get_fine_tuned_layers():
 
 
     return layers
-
-
-
-'''from tensorflow_text import SentencepieceTokenizer
-
-
-from tensorflow.python.platform import gfile
-
-model = gfile.GFile('new_amazon.model', 'rb').read()
-
-tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
-
-vocab_size = tokenizer.vocab_size() # 5269 
-
-print(vocab_size)'''
-
-'''lm_num, encoder_num, mask_num, spm_encoder_model = get_pretrained_model(70)
-
-layers = prepare_pretrained_model(encoder_num, 'shortenSPM.model', 70, vocab_size)
-
-model = tf.keras.Sequential()
-
-for layer in layers:
-    model.add(layer)
-
-model.summary()'''
-
-
