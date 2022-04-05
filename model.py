@@ -1,18 +1,11 @@
-from math import fmod
 import tensorflow as tf
-import model_import as mi
 from tqdm import tqdm
 import datetime
-import data_preparation
+import util
 import tensorflow_addons as tfa
-from discriminative_fine_tuning import get_optimizers
+from model_util import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
-import numpy as np
-
-
-
-
 
 class Fake_detection(tf.keras.Model):
     """Subclass model with features inspired by ULMFiT."""
@@ -33,9 +26,7 @@ class Fake_detection(tf.keras.Model):
 
         seq_length = 256
 
-        self.lm_num, self.encoder_num, _, self.spm_encoder_model = mi.get_pretrained_model(seq_length)
-
-        
+        self.lm_num, self.encoder_num, self.spm_encoder_model = util.get_pretrained_model(seq_length)
 
         if classifier:
 
@@ -44,11 +35,11 @@ class Fake_detection(tf.keras.Model):
                         tf.keras.metrics.BinaryAccuracy(name="acc"),
                        ]
             self.loss_function = tf.keras.losses.BinaryCrossentropy()  
-            temp_pretrained = mi.get_list_of_layers(self.encoder_num)
+            temp_pretrained = util.get_list_of_layers(self.encoder_num)
 
             pretrained_layers = [temp_pretrained[0], temp_pretrained[1]]
             #print(temp_pretrained[1])
-            temp_pretrained2 = mi.get_fine_tuned_layers()
+            temp_pretrained2 = util.get_fine_tuned_layers()
             for layer in temp_pretrained2[2:]:
                 pretrained_layers.append(layer)
 
@@ -81,7 +72,7 @@ class Fake_detection(tf.keras.Model):
                             tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
                         ]
             self.loss_function = tf.keras.losses.CategoricalCrossentropy()  
-            pretrained_layers, self.spm_encoder_model = mi.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
+            pretrained_layers, self.spm_encoder_model = util.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
             num_epochs_list = self.num_epoch
 
         for layer in pretrained_layers:
@@ -279,20 +270,20 @@ if __name__ == "__main__":
 
     if classifier:
         
-        train_text, train_label, test_text, test_label = data_preparation.get_dataset()
+        train_text, train_label, test_text, test_label = util.get_dataset()
         train_label = train_label.astype('int32')
         test_label = test_label.astype('int32')
 
     else:
-        train_text, train_label, test_text, test_label = data_preparation.get_amazon_dataset()
+        train_text, train_label, test_text, test_label = util.get_amazon_dataset()
 
     train_text = fmodel.encode(train_text)
     test_text = fmodel.encode(test_text)
         
     train_dataset = tf.data.Dataset.from_tensor_slices((train_text, train_label))
     test_dataset = tf.data.Dataset.from_tensor_slices((test_text, test_label))
-    train_dataset = data_preparation.data_pipeline(train_dataset)
-    test_dataset = data_preparation.data_pipeline(test_dataset)
+    train_dataset = util.data_pipeline(train_dataset)
+    test_dataset = util.data_pipeline(test_dataset)
 
 
     
