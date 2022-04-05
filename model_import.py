@@ -17,7 +17,7 @@ def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki1
                                                                         )
 
     # load the weights
-    encoder_num.load_weights('tf2_ulmfit/enwiki100-toks-sp35k-cased.model').expect_partial() 
+    encoder_num.load_weights('tf2_ulmfit/keras_weights/enwiki100_20epochs_toks_35k_cased').expect_partial() 
 
     return lm_num, encoder_num, mask_num, spm_encoder_model
 
@@ -70,6 +70,39 @@ def get_list_of_layers(model : tf.keras.Model) -> list:
         l.append(layer)
        
     return l
+
+
+import model_import as mi
+
+def get_fine_tuned_layers():
+    model = tf.keras.models.load_model('saved_model/fine_tuned_model')
+
+    temp_layers = []
+
+    for layer in model.layers:
+        temp_layers.append(layer)
+
+    temp_layers = temp_layers[3:-2]
+
+    layers = []
+
+    for layer in temp_layers:
+        layers.append(layer)
+
+    model = tf.keras.Sequential()
+   
+    for layer in layers:
+        model.add(layer)
+
+
+    layers = []
+
+    for layer in model.layers:
+        layers.append(layer)
+
+
+    return layers
+
 
 
 '''from tensorflow_text import SentencepieceTokenizer

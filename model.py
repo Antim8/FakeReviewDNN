@@ -1,3 +1,4 @@
+from math import fmod
 import tensorflow as tf
 import model_import as mi
 from tqdm import tqdm
@@ -7,8 +8,9 @@ import tensorflow_addons as tfa
 from discriminative_fine_tuning import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
+import numpy as np
 
-from test import testoo
+
 
 
 
@@ -36,11 +38,13 @@ class Fake_detection(tf.keras.Model):
                         tf.keras.metrics.BinaryAccuracy(name="acc"),
                        ]
             self.loss_function = tf.keras.losses.BinaryCrossentropy()  
-            pretrained_layers = mi.get_list_of_layers(self.encoder_num)
+            temp_pretrained = mi.get_list_of_layers(self.encoder_num)
 
-            #self.encoder_num.summary()
-
-            pretrained_layers = testoo()
+            pretrained_layers = [temp_pretrained[0], temp_pretrained[1]]
+            #print(temp_pretrained[1])
+            temp_pretrained2 = mi.get_fine_tuned_layers()
+            for layer in temp_pretrained2[2:]:
+                pretrained_layers.append(layer)
 
             pretrained_layers.append(ConcatPooler())
             pretrained_layers.append(tf.keras.layers.BatchNormalization(epsilon=1e-05, momentum=0.1, scale=False, center=False))
@@ -63,7 +67,7 @@ class Fake_detection(tf.keras.Model):
                 epoch = self.num_epoch - num
                 num_epochs_list.append(epoch)
 
-            print(pretrained_layers)
+            
 
         else:
             self.metrics_list = [
@@ -171,8 +175,11 @@ class Fake_detection(tf.keras.Model):
             predictions = self(x, training=True)
 
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
-        
+        print('before')
+        print(self.trainable_variables)
+        print('after')
         gradients = tape.gradient(loss, self.trainable_variables)
+        #print(gradients, np.asarray(gradients).shape)
 
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         
@@ -213,7 +220,7 @@ if __name__ == "__main__":
 
     if classifier:
         
-        train_text, train_label, test_text, test_label,_,_ = data_preparation.get_dataset()
+        train_text, train_label, test_text, test_label = data_preparation.get_dataset()
         train_label = train_label.astype('int32')
         test_label = test_label.astype('int32')
 
@@ -228,7 +235,6 @@ if __name__ == "__main__":
     train_dataset = data_preparation.data_pipeline(train_dataset)
     test_dataset = data_preparation.data_pipeline(test_dataset)
 
-    print("Done Preprocess")
 
     
     # Define where to save the log
@@ -284,6 +290,8 @@ if __name__ == "__main__":
         fmodel.reset_metrics()
         
         print("\n")
+
+    fmodel.summary()
 
     if classifier:
         

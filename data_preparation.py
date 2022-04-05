@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
 
 
-    labels = []
+    '''labels = []
     sp = sentencepiece.SentencePieceProcessor()
     sp.load('new_amazon.model')
     for label in new_label:
@@ -234,7 +234,7 @@ if __name__ == "__main__":
         labels.append(temp)
 
 
-    new_label = labels
+    new_label = labels'''
 
 
     
