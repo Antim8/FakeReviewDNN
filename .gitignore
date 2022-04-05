@@ -136,3 +136,10 @@ tf2_ulmfit/**/*
 example_tensorboard.py
 old_main.py
 
+weights
+saved_model
+rev_clean_data.csv
+rev_clean_data.parquet
+amazon.model
+new_amazon.model
+test.py
