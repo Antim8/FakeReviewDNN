@@ -26,10 +26,10 @@ To get a better understanding of the hows and whys take a look at the paper-like
 | new_amazon.model | bettered amazon model |
 | main.py | The main file for the user to interact |
 | utils.py | helper functions |
-| train_helper.py | functions to train ULMFIT |
+| model_util.py | functions that help to train ULMFIT |
 | fake_review_dataset.csv |  Our main dataset to train classifier |
 | model.py | Our model wrapping the ULMFIT by edrone |
-| rev_[clean]_data | fetched and cleaned Amazon review data of the official Tensorflow dataset |
+| rev_(clean)_data | fetched and cleaned Amazon review data of the official Tensorflow dataset |
 | shortenSPM.model | shortened original vm from 35000 to around 4-5k sentencepieces |
 
 ---
