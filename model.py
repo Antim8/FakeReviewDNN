@@ -15,8 +15,14 @@ import numpy as np
 
 
 class Fake_detection(tf.keras.Model):
+    """Subclass model with features inspired by ULMFiT."""
     
     def __init__(self, classifier=False):
+        """Class init
+
+        Args:
+            classifier (bool, optional): Use classifier or fine-tune model. Defaults to False.
+        """
         
         super(Fake_detection, self).__init__()
 
@@ -97,12 +103,21 @@ class Fake_detection(tf.keras.Model):
         
 
     def encode(self, text : tf.string) -> tf.Tensor:
+        """Encodes text to tf.Tensor using sentencepiece.
+
+        Args:
+            text (tf.string): Text
+
+        Returns:
+            tf.Tensor: Text represented as tf.Tensor
+        """
 
         return self.spm_encoder_model(tf.constant(text, dtype=tf.string))
        
 
 
     def gradual_unfreezing(self):
+        """Keeps track of layers to be updated for gradual unfreezing."""
 
         #TODO more layers than epochs error
 
@@ -113,6 +128,15 @@ class Fake_detection(tf.keras.Model):
         self.training_list_index = (self.training_list_index - 1) * temp
 
     def temp_call_classifier(self, x : tf.Tensor, training : bool = False) -> tf.Tensor:
+        """Call function if classifier is true.
+
+        Args:
+            x (tf.Tensor):              Input
+            training (bool, optional):  Weather weights should be trained or not. Defaults to False.
+
+        Returns:
+            tf.Tensor: Output of the layers.
+        """
     
         training = self.training_list * training + self.no_training * (int(training)+1)
         
@@ -139,6 +163,15 @@ class Fake_detection(tf.keras.Model):
         return x
     
     def temp_call(self, x : tf.Tensor, training : bool = False) -> tf.Tensor:
+        """Call function if one fine-tunes the model.
+
+        Args:
+            x (tf.Tensor):              Input
+            training (bool, optional):  Weather weights should be trained or not. Defaults to False.
+
+        Returns:
+            tf.Tensor: Output of the layers.
+        """
          
         for layer in self.all_layers[:10]:
             x = layer(x)
@@ -152,6 +185,15 @@ class Fake_detection(tf.keras.Model):
         return x
     #TODO if else
     def call(self, x : tf.Tensor, training : bool = False) -> tf.Tensor:
+        """Calls either temp_call or temp_call_classifier.
+
+        Args:
+            x (tf.Tensor):              Input
+            training (bool, optional):  Weather weights should be trained or not. Defaults to False.
+
+        Returns:
+            tf.Tensor: Output of the layers.
+        """
 
         x = tf.cond(tf.constant(self.classifier,dtype=tf.bool), lambda: self.temp_call_classifier(x, training=training), lambda: self.temp_call(x, training=training))
 
@@ -160,12 +202,21 @@ class Fake_detection(tf.keras.Model):
    
     
     def reset_metrics(self):
+        """Reset metric states."""
         
         for metric in self.metrics:
             metric.reset_states()
             
     #TODO tf function possible?
     def train_step(self, data : tf.data.Dataset) -> dict:
+        """The train step of the model.
+
+        Args:
+            data (tf.data.Dataset): The given dataset composed of train_text and train_label.
+
+        Returns:
+            dict: Results of the train step.
+        """
         
         x, targets = data
         apply_awd_eagerly(fmodel, 0.5) 
@@ -195,6 +246,14 @@ class Fake_detection(tf.keras.Model):
 
     #TODO tf function possible?
     def test_step(self, data : tf.data.Dataset) -> dict:
+        """The test step of the model.
+
+        Args:
+            data (tf.data.Dataset): The given dataset composed of test_text and test_label.
+
+        Returns:
+            dict: Results of the test step.
+        """
 
         x, targets = data
         
