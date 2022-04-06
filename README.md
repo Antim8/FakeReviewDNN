@@ -39,3 +39,31 @@ Check out the folder [Scientific background]
 ---
 ## How to use it
 
+### 1. (Optional)Create amazon.model
+Run the funtion __train_sentencepiece_model__ in the util.py file to get a sentencepiece model of our amazon dataset (rev_data.txt)
+
+<br>
+
+### 2. (Optional) Create shortened model
+Run the function blablabla with amazon.model provided
+
+<br>
+
+
+### 3. (Optional)Merge the models
+Run the function
+Code Discord
+-> new_amazon.model
+
+<br>
+
+### 4. (Optional)Create dataset for LM-fine tuning
+Run prepare_for_generation in util.py (with rev_data.txt and new_amazon.model)
+
+<br>
+
+### 5. R
+
+### Test reviews if they are real or bot written 
+Just run the main.py script and follow the instructions
+
