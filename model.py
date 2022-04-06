@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from tqdm import tqdm
 import datetime
@@ -8,6 +10,8 @@ from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
 
 import test
+
+
 
 class Fake_detection(tf.keras.Model):
     """Subclass model with features inspired by ULMFiT."""
@@ -32,6 +36,8 @@ class Fake_detection(tf.keras.Model):
 
         if classifier:
 
+            self.spm_encoder_model = util.get_spm_encoder_model(seq_length=seq_length, model_path='new_amazon.model')
+
             self.metrics_list = [
                         tf.keras.metrics.Mean(name="loss"),
                         tf.keras.metrics.BinaryAccuracy(name="acc"),
@@ -41,8 +47,6 @@ class Fake_detection(tf.keras.Model):
 
             pretrained_layers = [temp_pretrained[0], temp_pretrained[1]]
 
-            util.get_fine_tuned_layers()
-            
             temp_pretrained2 = util.get_fine_tuned_layers()
             for layer in temp_pretrained2[2:]:
                 pretrained_layers.append(layer)
