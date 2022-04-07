@@ -248,6 +248,10 @@ def get_amazon_dataset() -> tuple:
 
     return train_text, train_label, test_text, test_label
 
+#a,b,c,d = get_amazon_dataset()
+
+#print(np.asarray(a).shape, np.asarray(b).shape, len(c), len(d))
+
 
 def data_pipeline(ds: tf.data.Dataset, shuffle:int=1000, batch:int=64, prefetch:int=20) -> tf.data.Dataset:
     """Preprocess data (shuffle, batch, prefetch).
@@ -398,6 +402,8 @@ def prepare_for_generation(text_data:str, model_path:str):
         tmp_label = spm.id_to_string(tmp_label)
         inp.append(tmp_inp)
         label.append(tmp_label)
+
+    labels = []
         
     new_inp, new_label = [] , []
     for i, l in zip(inp, label):
@@ -405,6 +411,8 @@ def prepare_for_generation(text_data:str, model_path:str):
         l = l.numpy().decode('utf-8')
         new_inp.append(i)
         new_label.append(l)
+
+    
 
     sp = sentencepiece.SentencePieceProcessor()
     sp.load('new_amazon.model')
@@ -420,13 +428,21 @@ def prepare_for_generation(text_data:str, model_path:str):
 
     indices = []
 
+    new_label = labels
+
     for label in new_label:
         indices.append(sp.PieceToId(label))
 
-    new_label = tf.one_hot(indices=indices,depth=sp.vocab_size()).numpy()
+    new_label = tf.one_hot(indices=indices,depth=sp.vocab_size())
+    new_label = new_label.numpy()
 
     data = pd.DataFrame(columns=['input','label'], data=zip(new_inp, new_label))
-    data.to_parquet('rev_clean_data.parquet')
+    data.to_parquet('new_variant.parquet')
+
+'''with open('rev_data.txt', 'r') as f:
+    text = f.readlines()
+
+prepare_for_generation(text,'new_amazon.model')'''
 
 
 def create_amazon_dataset():
@@ -469,21 +485,22 @@ def create_amazon_dataset():
             except:
                 pass
 
-
-#TODO docstring
 def train_sentencepiece_model(input : str = "rev_data.txt", name : str = "amazon", vocab_size : str = "2000"):
     """Trains a sentencepiece model on the amazon dataset.
 
     Args:
-        input (str, optional): _description_. Defaults to "rev_data.txt".
-        name (str, optional): _description_. Defaults to "amazon".
-        vocab_size (str, optional): _description_. Defaults to "2000".
+        input (str, optional):          Path to the text file. Defaults to "rev_data.txt".
+        name (str, optional):           Name of the model file. Defaults to "amazon".
+        vocab_size (str, optional):     Vocabulary size. Defaults to "2000".
     """
     
-  
-
     spm.SentencePieceTrainer.train("--input=" + input + "--model_prefix=" + name + " --vocab_size=" + vocab_size)
 
 
-
+from tensorflow_text import SentencepieceTokenizer
+from tensorflow.python.platform import gfile
+model = gfile.GFile('new_amazon.model', 'rb').read()
+tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+vocab_size = tokenizer.vocab_size()
+print(vocab_size)
 

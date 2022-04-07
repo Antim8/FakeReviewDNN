@@ -25,7 +25,7 @@ class Fake_detection(tf.keras.Model):
         
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 1
+        self.num_epoch = 20
         self.num_updates_per_epoch = 650
 
         self.classifier = classifier
@@ -77,7 +77,7 @@ class Fake_detection(tf.keras.Model):
         else:
             self.metrics_list = [
                             tf.keras.metrics.Mean(name="loss"),
-                            tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
+                            tf.keras.metrics.CategoricalAccuracy(name="acc"),
                         ]
             self.loss_function = tf.keras.losses.CategoricalCrossentropy()  
             pretrained_layers, self.spm_encoder_model = util.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
@@ -270,7 +270,7 @@ class Fake_detection(tf.keras.Model):
     
 if __name__ == "__main__":
 
-    classifier = True
+    classifier = False
     
     fmodel = Fake_detection(classifier=classifier)
 
@@ -350,13 +350,10 @@ if __name__ == "__main__":
     fmodel.summary()
 
     if classifier:
-        
-
-        fmodel.save_weights('./weights/classifier_model')
+        fmodel.save('saved_model/classifier_model')
     else:
-        fmodel.summary()
         fmodel.save('saved_model/fine_tuned_model')
-        fmodel.save_weights('./weights/lm_finetuning_model')
+        
 
 
 
