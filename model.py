@@ -1,5 +1,5 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 from tqdm import tqdm
 import datetime
@@ -8,8 +8,7 @@ import tensorflow_addons as tfa
 from model_util import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
-
-import test
+import get_fine_tuned_layers
 
 
 
@@ -26,7 +25,7 @@ class Fake_detection(tf.keras.Model):
         super(Fake_detection, self).__init__()
 
         self.num_epoch = 20
-        self.num_updates_per_epoch = 650
+        self.num_updates_per_epoch = 316
 
         self.classifier = classifier
 
@@ -47,9 +46,10 @@ class Fake_detection(tf.keras.Model):
 
             pretrained_layers = [temp_pretrained[0], temp_pretrained[1]]
 
-            temp_pretrained2 = util.get_fine_tuned_layers()
+            temp_pretrained2 = get_fine_tuned_layers.get_fine_tuned_layers()
             for layer in temp_pretrained2[2:]:
                 pretrained_layers.append(layer)
+
 
             pretrained_layers.append(ConcatPooler())
             pretrained_layers.append(tf.keras.layers.BatchNormalization(epsilon=1e-05, momentum=0.1, scale=False, center=False))
@@ -270,7 +270,7 @@ class Fake_detection(tf.keras.Model):
     
 if __name__ == "__main__":
 
-    classifier = False
+    classifier = True
     
     fmodel = Fake_detection(classifier=classifier)
 
@@ -349,7 +349,7 @@ if __name__ == "__main__":
 
     fmodel.summary()
 
-    if classifier:
+    if fmodel.classifier:
         fmodel.save('saved_model/classifier_model')
     else:
         fmodel.save('saved_model/fine_tuned_model')
