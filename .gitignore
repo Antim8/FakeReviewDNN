@@ -143,3 +143,4 @@ rev_clean_data.parquet
 amazon.model
 new_amazon.model
 test.py
+ToDo.*
