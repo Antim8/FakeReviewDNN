@@ -1,9 +1,10 @@
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 """ This is the main script for user interaction with the program
 """
+
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import sys
-from lib2to3.pgen2.tokenize import TokenError
 import tensorflow as tf
 import tensorflow_text
 from tensorflow.python.platform import gfile
