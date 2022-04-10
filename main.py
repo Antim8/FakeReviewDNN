@@ -1,7 +1,9 @@
 """ This is the main script for user interaction with the program
 """
-from model import Fake_detection
-
+from lib2to3.pgen2.tokenize import TokenError
+import tensorflow as tf
+import tensorflow_text
+from tensorflow.python.platform import gfile
 
 def main():
     
@@ -19,12 +21,19 @@ def main():
             
     print("Reviews read")
     
-    fd = Fake_detection(classifier=True)
-    encoded_revs = fd.encode(revs)
-    sols = []
     
-    for rev in encoded_revs:
-        sols.append(fd(rev))
+    sols = []
+
+    model = tf.keras.models.load_model('saved_model\classifier_model')
+    spmodel = gfile.GFile('new_amazon.model', 'rb').read()
+    tokenizer = tensorflow_text.SentencepieceTokenizer(spmodel,add_bos=True, add_eos=True)
+    
+    for rev in revs:
+        sentence = tokenizer.tokenize(rev)
+        sentence = tf.pad(sentence, paddings=[[0,256-tf.shape(sentence)[0]]], constant_values=1)
+        sentence = tf.expand_dims(sentence, axis=0)
+
+        sols.append(tf.round(model.predict(sentence)))
     
     print("Analyzing done")
     
