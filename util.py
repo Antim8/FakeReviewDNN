@@ -192,7 +192,7 @@ def get_amazon_dataset() -> tuple:
         
     """
 
-    df = pd.read_parquet("old_variant.parquet")
+    df = pd.read_parquet("rev_clean_data.parquet")
     df.columns = ['text', 'label']
 
     df = df.dropna(how='any', axis=0)
@@ -275,9 +275,7 @@ def get_tokens_to_keep(text : list, tokenizer : SentencepieceTokenizer) -> list:
             tokens.append(tokenizer.string_to_id(word).numpy())
 
     return list(set(tokens))
-#TODO typing
 
-#TODO what is SPM 
 def shorten_SPM(model_path='tf2_ulmfit/enwiki100-toks-sp35k-cased.model'):
     """Deletes tokens of the Sentencepiece model, which do not appear in the amazon data.
 
@@ -312,7 +310,7 @@ def shorten_SPM(model_path='tf2_ulmfit/enwiki100-toks-sp35k-cased.model'):
     # create new file with shortend tokens
     with open("shortenSPM.model", 'wb') as f:
         f.write(SPM.SerializeToString())
-#TODO typing
+
 def merge_SPM(first_model_path : str = 'shortenSPM.model', second_model_path: str = 'amazon.model'):
     """Compines the tokens of two sentencepiece models and creates a new model file.
 
@@ -392,32 +390,22 @@ def prepare_for_generation(text_data:str, model_path:str):
     sp = sentencepiece.SentencePieceProcessor()
     sp.load('new_amazon.model')
 
-    '''for label in new_label:
+    for label in new_label:
         temp = []
         for id in range(sp.vocab_size()):
             if sp.id_to_piece(id) == label:
                 temp.append(1)
             else: 
                 temp.append(0)
-        labels.append(temp)'''
+        labels.append(temp)
 
-    indices = []
+    
 
     new_label = labels
 
-    for label in new_label:
-        indices.append(sp.PieceToId(label))
-
-    new_label = tf.one_hot(indices=indices,depth=sp.vocab_size())
-    new_label = new_label.numpy()
-
     data = pd.DataFrame(columns=['input','label'], data=zip(new_inp, new_label))
-    data.to_parquet('new_variant.parquet')
+    data.to_parquet('rev_clean_data.parquet')
 
-'''with open('rev_data.txt', 'r') as f:
-    text = f.readlines()
-
-prepare_for_generation(text,'new_amazon.model')'''
 
 
 def create_amazon_dataset():

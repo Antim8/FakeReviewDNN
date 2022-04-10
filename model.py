@@ -118,8 +118,6 @@ class Fake_detection(tf.keras.Model):
     def gradual_unfreezing(self):
         """Keeps track of layers to be updated for gradual unfreezing."""
 
-        #TODO more layers than epochs error
-
         self.training_list[self.training_list_index] = True
 
         temp = self.training_list_index > 0
@@ -182,7 +180,7 @@ class Fake_detection(tf.keras.Model):
                 x = layer(x)
        
         return x
-    #TODO if else
+        
     def call(self, x : tf.Tensor, training : bool = False) -> tf.Tensor:
         """Calls either temp_call or temp_call_classifier.
 
@@ -206,7 +204,7 @@ class Fake_detection(tf.keras.Model):
         for metric in self.metrics:
             metric.reset_states()
             
-    #TODO tf function possible?
+    
     def train_step(self, data : tf.data.Dataset) -> dict:
         """The train step of the model.
 
@@ -241,7 +239,7 @@ class Fake_detection(tf.keras.Model):
         # Return a dictionary mapping metric names to current value
         return {m.name: m.result() for m in self.metrics}
 
-    #TODO tf function possible?
+    
     def test_step(self, data : tf.data.Dataset) -> dict:
         """The test step of the model.
 
