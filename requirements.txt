@@ -1,0 +1,12 @@
+tensorflow==2.7.0
+tensorflow_datasets
+tensorflow_text
+tensorflow_addons
+numpy
+pandas
+SentencePiece
+tqdm
+torch
+fastai
+os
+datetime

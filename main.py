@@ -1,6 +1,5 @@
 """ This is the main script for user interaction with the program
 """
-from lib2to3.pgen2.tokenize import TokenError
 import tensorflow as tf
 import tensorflow_text
 from tensorflow.python.platform import gfile
