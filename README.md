@@ -1,7 +1,7 @@
 # FakeReviewDNN
 
 ## Description:
-This is an ULMFIT-based NLP approach on the detection of online Fake-reviews as an example to show the implementation of ULMFIT in Tensorflow and the usage of the pretrained model by Hubert Karbowy and the endrone team. [https://bitbucket.org/edroneteam/tf2_ulmfit/src/master/]
+This is an ULMFIT-based NLP approach on the detection of online Fake-reviews as an example to show the implementation of ULMFIT in Tensorflow and the usage of the pretrained model by Hubert Karbowy and the [endrone](https://bitbucket.org/edroneteam/tf2_ulmfit/src/master/) team.
 
 The implementation and documentation was done by: Tim Kapferer @TimKapf, Sofia Worsfold @fiabox and Tim Petersen @Antim8
 
@@ -10,11 +10,11 @@ To get a better understanding of the hows and whys take a look at the paper-like
 ----
 
 ## Prerequisites
-- Have a python environment with tensorflow installed [link]
+- Have a python environment with [Tensorflow](https://www.tensorflow.org/install/pip) installed 
 - Install the requirements.txt with pip
   - be sure that your os and python version are supported for tensorflow_text, otherwise errors will occur
-- clone the repository by endrone [link] into a folder of name "tf2_ulmit" otherwise the imports won't work
-- if you want to graphically inspect the generated logs install tensorboard and start it with specific logdir [link]
+- clone the repository by [endrone](https://bitbucket.org/edroneteam/tf2_ulmfit/src/master/) into a folder of name "tf2_ulmit" otherwise the imports won't work
+- if you want to graphically inspect the generated logs install tensorboard and start it with specific logdir
 
 ---
 ## Structure:
@@ -40,7 +40,7 @@ Check out the folder [Scientific background]
 ## How to use it
 
 ### 1. (Optional)Create amazon.model
-Run the funtion __train_sentencepiece_model__ in the util.py file to get a sentencepiece model of our amazon dataset (rev_data.txt)
+Run the funtion __train_sentencepiece_model__ in the util.py file to get a sentencepiece model of our [amazon dataset](./rev_data.txt)
 
 <br>
 
@@ -62,7 +62,7 @@ Run prepare_for_generation in util.py (with rev_data.txt and new_amazon.model)
 
 <br>
 
-### 5. R
+### 5. 
 
 ### Test reviews if they are real or bot written 
 Just run the main.py script and follow the instructions

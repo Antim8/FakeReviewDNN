@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 from tqdm import tqdm
 import datetime
@@ -6,6 +8,9 @@ import tensorflow_addons as tfa
 from model_util import get_optimizers
 from tf2_ulmfit.ulmfit_tf2 import apply_awd_eagerly
 from tf2_ulmfit.ulmfit_tf2 import ConcatPooler
+import get_fine_tuned_layers
+
+
 
 class Fake_detection(tf.keras.Model):
     """Subclass model with features inspired by ULMFiT."""
@@ -19,8 +24,8 @@ class Fake_detection(tf.keras.Model):
         
         super(Fake_detection, self).__init__()
 
-        self.num_epoch = 1
-        self.num_updates_per_epoch = 650
+        self.num_epoch = 20
+        self.num_updates_per_epoch = 316
 
         self.classifier = classifier
 
@@ -30,6 +35,8 @@ class Fake_detection(tf.keras.Model):
 
         if classifier:
 
+            self.spm_encoder_model = util.get_spm_encoder_model(seq_length=seq_length, model_path='new_amazon.model')
+
             self.metrics_list = [
                         tf.keras.metrics.Mean(name="loss"),
                         tf.keras.metrics.BinaryAccuracy(name="acc"),
@@ -38,10 +45,11 @@ class Fake_detection(tf.keras.Model):
             temp_pretrained = util.get_list_of_layers(self.encoder_num)
 
             pretrained_layers = [temp_pretrained[0], temp_pretrained[1]]
-            #print(temp_pretrained[1])
-            temp_pretrained2 = util.get_fine_tuned_layers()
+
+            temp_pretrained2 = get_fine_tuned_layers.get_fine_tuned_layers()
             for layer in temp_pretrained2[2:]:
                 pretrained_layers.append(layer)
+
 
             pretrained_layers.append(ConcatPooler())
             pretrained_layers.append(tf.keras.layers.BatchNormalization(epsilon=1e-05, momentum=0.1, scale=False, center=False))
@@ -69,7 +77,7 @@ class Fake_detection(tf.keras.Model):
         else:
             self.metrics_list = [
                             tf.keras.metrics.Mean(name="loss"),
-                            tf.keras.metrics.SparseCategoricalAccuracy(name="acc"),
+                            tf.keras.metrics.CategoricalAccuracy(name="acc"),
                         ]
             self.loss_function = tf.keras.losses.CategoricalCrossentropy()  
             pretrained_layers, self.spm_encoder_model = util.prepare_pretrained_model(self.encoder_num, 'new_amazon.model', seq_length)
@@ -217,11 +225,9 @@ class Fake_detection(tf.keras.Model):
             predictions = self(x, training=True)
 
             loss = self.loss_function(targets, predictions) + tf.reduce_sum(self.losses)
-        print('before')
-        print(self.trainable_variables)
-        print('after')
+        
         gradients = tape.gradient(loss, self.trainable_variables)
-        #print(gradients, np.asarray(gradients).shape)
+        
 
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         
@@ -343,14 +349,11 @@ if __name__ == "__main__":
 
     fmodel.summary()
 
-    if classifier:
-        
-
-        fmodel.save_weights('./weights/classifier_model')
+    if fmodel.classifier:
+        fmodel.save('saved_model/classifier_model')
     else:
-        fmodel.summary()
         fmodel.save('saved_model/fine_tuned_model')
-        fmodel.save_weights('./weights/lm_finetuning_model')
+        
 
 
 

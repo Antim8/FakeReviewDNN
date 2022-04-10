@@ -10,6 +10,10 @@ from tensorflow.python.platform import gfile
 from tensorflow_text import SentencepieceTokenizer
 
 from tf2_ulmfit.ulmfit_tf2 import tf2_ulmfit_encoder
+from sentencepiece import sentencepiece_model_pb2 as model
+
+
+
 
 
 def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki100-toks-sp35k-cased.model') -> tuple:
@@ -21,9 +25,9 @@ def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki1
 
     Returns:
         tuple: 
-            lm_num (tf.keras.engine.functional.Functional):            Language Model with head (softmax).
-            encoder_num (tf.keras.engine.functional.Functional):       Language Model without head.
-            spm_encoder_model (tf.keras.engine.functional.Functional): Model to encode text.
+            lm_num (tf.keras.Model):            Language Model with head (softmax).
+            encoder_num (tf.keras.Model):       Language Model without head.
+            spm_encoder_model (tf.keras.Model): Model to encode text.
             
     """
     
@@ -41,18 +45,41 @@ def get_pretrained_model(seq_length : int, model_path : str ='tf2_ulmfit/enwiki1
 
     return lm_num, encoder_num, spm_encoder_model
 
-def prepare_pretrained_model(pretrained_model : tf.keras.engine.functional.Functional, new_spm : str, seq_length : int) -> tuple:
+def get_spm_encoder_model(seq_length : int, model_path : str) -> tf.keras.Model:
+    """Get the sentencepiece encoder model to encode text on the givin sentenpiece model.
+
+    Args:
+        seq_length (int): _description_
+        model_path (str, optional): _description_.
+
+    Returns:
+        tf.keras.Model: _description_
+    """
+
+    spm_args = {'spm_model_file': model_path,
+                'add_bos': True,
+                'add_eos': True,
+                'fixed_seq_len': seq_length}
+    _, _, _, spm_encoder_model = tf2_ulmfit_encoder(spm_args=spm_args,
+                                                                        fixed_seq_len=seq_length
+                                                                        )
+
+    return spm_encoder_model
+
+
+
+def prepare_pretrained_model(pretrained_model : tf.keras.Model, new_spm : str, seq_length : int) -> tuple:
     """Returns layers of the model for fine tuning the general language model and the SentencePiece encoder model.
 
     Args:
-        pretrained_model (tf.keras.engine.functional.Functional): General domain language model.
+        pretrained_model (tf.keras.Model): General domain language model.
         new_spm (str): Path to the adjusted SentencePiece model.
         seq_length (int): Sequence Length.
 
     Returns:
         tuple: 
             keep (list):                                                Layers of the model for fine tuning the general language model.
-            spm_encoder_model (tf.keras.engine.functional.Functional):  Model to encode text.
+            spm_encoder_model (tf.keras.Model):                    Model to encode text.
     """
 
     layers = get_list_of_layers(pretrained_model)
@@ -103,40 +130,6 @@ def get_list_of_layers(model : tf.keras.Model) -> list:
         l.append(layer)
        
     return l
-
-def get_fine_tuned_layers():
-    """Return the layers of the saved model which is finetuned on amazon reviews.
-
-    Returns:
-        list: Layers of the fine tuned model.
-    """
-    model = tf.keras.models.load_model('saved_model/fine_tuned_model')
-
-    temp_layers = []
-
-    for layer in model.layers:
-        temp_layers.append(layer)
-
-    temp_layers = temp_layers[3:-2]
-
-    layers = []
-
-    for layer in temp_layers:
-        layers.append(layer)
-
-    model = tf.keras.Sequential()
-   
-    for layer in layers:
-        model.add(layer)
-
-
-    layers = []
-
-    for layer in model.layers:
-        layers.append(layer)
-
-
-    return layers
 
 def get_dataset() -> tuple: 
     """Returns the train and test data of the Fake Review dataset for the classification to detect fake reviews.
@@ -199,7 +192,7 @@ def get_amazon_dataset() -> tuple:
         
     """
 
-    df = pd.read_parquet("rev_clean_data.parquet")
+    df = pd.read_parquet("old_variant.parquet")
     df.columns = ['text', 'label']
 
     df = df.dropna(how='any', axis=0)
@@ -225,7 +218,8 @@ def get_amazon_dataset() -> tuple:
     return train_text, train_label, test_text, test_label
 
 
-def data_pipeline(ds: tf.data.Dataset, shuffle:int=1000, batch:int=64, prefetch:int=20) -> tf.data.Dataset:
+
+def data_pipeline(ds: tf.data.Dataset, shuffle:int=1000, batch:int=64) -> tf.data.Dataset:
     """Preprocess data (shuffle, batch, prefetch).
 
     Args:
@@ -240,8 +234,7 @@ def data_pipeline(ds: tf.data.Dataset, shuffle:int=1000, batch:int=64, prefetch:
     
     ds = ds.shuffle(shuffle)
     ds = ds.batch(batch)
-    #TODO advanced shit maybe
-    ds = ds.prefetch(prefetch)
+    ds = ds.prefetch(tf.data.AUTOTUNE)
 
     return ds
 
@@ -285,13 +278,17 @@ def get_tokens_to_keep(text : list, tokenizer : SentencepieceTokenizer) -> list:
 #TODO typing
 
 #TODO what is SPM 
-def shorten_SPM(SPM : spm.sentencepiece_model_pb2.ModelProto, tokenizer:SentencepieceTokenizer):
+def shorten_SPM(model_path='tf2_ulmfit/enwiki100-toks-sp35k-cased.model'):
     """Deletes tokens of the Sentencepiece model, which do not appear in the amazon data.
 
     Args:
-        SPM (spm.sentencepiece_model_pb2.ModelProto):   Sentencepiece model to be shorten.
-        tokenizer (SentencepieceTokenizer):         Sentencepiece Tokenizer trained on an existing corpus.
+        model_path (str, optional): Path to the .model file. Defaults to 'tf2_ulmfit/enwiki100-toks-sp35k-cased.model'.
     """
+    model = gfile.GFile(model_path, 'rb').read()
+    tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+    SPM = model.ModelProto()
+    SPM.ParseFromString(open(model_path, 'rb').read()) 
+
 
     tokens_to_keep = get_tokens_to_keep(get_amazon_data(), tokenizer)
 
@@ -316,13 +313,18 @@ def shorten_SPM(SPM : spm.sentencepiece_model_pb2.ModelProto, tokenizer:Sentence
     with open("shortenSPM.model", 'wb') as f:
         f.write(SPM.SerializeToString())
 #TODO typing
-def merge_SPM(first_SPM : spm.sentencepiece_model_pb2.ModelProto, second_SPM : spm.sentencepiece_model_pb2.ModelProto):
+def merge_SPM(first_model_path : str = 'shortenSPM.model', second_model_path: str = 'amazon.model'):
     """Compines the tokens of two sentencepiece models and creates a new model file.
 
     Args:
-        first_SPM (spm.sentencepiece_model_pb2.ModelProto):     Sentencepiece model to be combined.
-        second_SPM (spm.sentencepiece_model_pb2.ModelProto):    Sentencepiece model to be combined.
+        first_model_path (str, optional):   Path to the first .model file. Defaults to 'shortenSPM.model'.
+        second_model_path (str, optional):  Path to the second .model file. Defaults to 'amazon.model'.
     """
+
+    first_SPM = model.ModelProto()
+    first_SPM.ParseFromString(open(first_model_path, 'rb').read()) 
+    second_SPM = model.ModelProto()
+    second_SPM.ParseFromString(open(second_model_path, 'rb').read()) 
 
     new_pieces = []
     temp_pieces = []
@@ -353,6 +355,7 @@ def prepare_for_generation(text_data:str, model_path:str):
     model = gfile.GFile(model_path, 'rb').read()
     spm = SentencepieceTokenizer(model, add_bos=True, add_eos=True)
     revst = spm.tokenize(text_data)
+    
     revst = [list(x.numpy()) for x in revst]
     inp = []
     label = []
@@ -374,6 +377,8 @@ def prepare_for_generation(text_data:str, model_path:str):
         tmp_label = spm.id_to_string(tmp_label)
         inp.append(tmp_inp)
         label.append(tmp_label)
+
+    labels = []
         
     new_inp, new_label = [] , []
     for i, l in zip(inp, label):
@@ -382,23 +387,38 @@ def prepare_for_generation(text_data:str, model_path:str):
         new_inp.append(i)
         new_label.append(l)
 
-    labels = []
+    
+
     sp = sentencepiece.SentencePieceProcessor()
     sp.load('new_amazon.model')
-    for label in new_label:
+
+    '''for label in new_label:
         temp = []
         for id in range(sp.vocab_size()):
             if sp.id_to_piece(id) == label:
                 temp.append(1)
             else: 
                 temp.append(0)
-        labels.append(temp)
+        labels.append(temp)'''
 
+    indices = []
 
     new_label = labels
 
+    for label in new_label:
+        indices.append(sp.PieceToId(label))
+
+    new_label = tf.one_hot(indices=indices,depth=sp.vocab_size())
+    new_label = new_label.numpy()
+
     data = pd.DataFrame(columns=['input','label'], data=zip(new_inp, new_label))
-    data.to_parquet('rev_clean_data.parquet')
+    data.to_parquet('new_variant.parquet')
+
+'''with open('rev_data.txt', 'r') as f:
+    text = f.readlines()
+
+prepare_for_generation(text,'new_amazon.model')'''
+
 
 def create_amazon_dataset():
     """Create a text file with amazon reviews from specific categories."""
@@ -441,6 +461,21 @@ def create_amazon_dataset():
                 pass
 
 def train_sentencepiece_model(input : str = "rev_data.txt", name : str = "amazon", vocab_size : str = "2000"):
-    """Trains a sentencepiece model on the amazon dataset."""
+    """Trains a sentencepiece model on the amazon dataset.
 
+    Args:
+        input (str, optional):          Path to the text file. Defaults to "rev_data.txt".
+        name (str, optional):           Name of the model file. Defaults to "amazon".
+        vocab_size (str, optional):     Vocabulary size. Defaults to "2000".
+    """
+    
     spm.SentencePieceTrainer.train("--input=" + input + "--model_prefix=" + name + " --vocab_size=" + vocab_size)
+
+
+'''from tensorflow_text import SentencepieceTokenizer
+from tensorflow.python.platform import gfile
+model = gfile.GFile('new_amazon.model', 'rb').read()
+tokenizer = SentencepieceTokenizer(model=model, out_type=tf.string) 
+vocab_size = tokenizer.vocab_size()
+print(vocab_size)'''
+
